@@ -55,14 +55,12 @@ impl Board {
 
     pub fn visualize(&self) {
         let mut stdout = stdout();
-
         execute!(
             stdout,
             Clear(ClearType::All),
             cursor::MoveTo(0, 0)
         )
             .unwrap();
-
         println!("{}", FILE_NAMES);
 
         for (rank, row) in self.0.iter().enumerate() {
