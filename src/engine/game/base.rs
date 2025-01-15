@@ -1,9 +1,12 @@
 use std::fmt::Debug;
-use std::io::{self, Write};
+use std::io::{self, Stdin, Write};
+use regex::Regex;
 use crate::engine::board::board::Board;
 use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::board::location::{File, Location, Rank};
-use crate::engine::movement::moves::{Move, MoveType};
+use crate::engine::gui::base::GUI;
+use crate::engine::movement::moves;
+use crate::engine::movement::moves::Action;
 
 const fn get_location_by_side(side: Side) -> [(Location, Piece); 16]{
     let pieces_rank = match side {
@@ -37,13 +40,19 @@ const fn get_location_by_side(side: Side) -> [(Location, Piece); 16]{
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
 const BLACK_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::Black);
 
+
 pub struct Game{
-    board: Board
+    board: Board,
+    gui: Box<dyn GUI<moves::Action>>
 }
 
 impl Game {
-    pub fn new() -> Self {
-        Self{board: Board::new()}
+
+    pub fn new(gui: Box<dyn GUI<moves::Action>>) -> Box<Self> {
+        Box::new(Self {
+            board: Board::new(),
+            gui,
+        })
     }
 
     fn reset_board(&mut self){
@@ -55,28 +64,24 @@ impl Game {
             });
     }
 
+
     pub fn start(&mut self){
         self.reset_board();
-        let mut stdout = io::stdout();
         loop{
-            self.board.visualize(&mut stdout);
-            let mut input = String::new();
-            writeln!(stdout, "Hello, world!").expect("Failed to write to stdout");
-            io::stdin()
-                .read_line(&mut input) // Read input and store it in the String
-                .expect("Failed to read line");
-            println!("Hello, {}!", input.trim());
+            self.gui.render(&self.board);
+            let user_action = self.gui.wait_and_process_event();
+            match user_action {
+                moves::Action::OfferDraw => {}
+                moves::Action::Resign => {}
+                moves::Action::AcceptDraw => {}
+                moves::Action::Move(move_action) => {
+                    self.board.action(move_action);
+                }
+                moves::Action::Error => {
+                    println!("Error");
+                }
+            }
         }
-
-        // // self.board.visualize();
-        // let _move = Move::new(
-        //     Location::new(File::A, Rank::Two),
-        //     Location::new(File::A, Rank::Three),
-        //     MoveType::Normal
-        // );
-        // self.board.action(_move);
-        // clearscreen::clear().expect("failed to clear screen");
-        // self.board.visualize();
     }
 
 }
