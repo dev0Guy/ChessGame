@@ -58,9 +58,7 @@ impl CommandPromptGUI{
         let to = caps.get(2).unwrap().as_str();
         let from = Location::from(from).unwrap();
         let to = Location::from(to).unwrap();
-        let x = moves::Action::Move(moves::MoveAction::new(from, to, moves::MoveType::Normal));
-        println!("{:?}",x);
-        x
+        moves::Action::Move(moves::MoveAction::new(from, to, moves::MoveType::Normal))
     }
 
     fn extract_show(regex: Regex, s: &str) -> moves::Action{
