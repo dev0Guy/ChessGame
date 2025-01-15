@@ -2,7 +2,7 @@ use crate::engine::board::location::Location;
 use crate::engine::board::pieces::{Piece};
 
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum MoveType{
     #[default]
     Normal,
@@ -14,13 +14,25 @@ pub enum MoveType{
     Castling
 }
 
-pub struct Move{
+#[derive(Debug)]
+pub struct MoveAction {
     pub from: Location,
     pub to: Location,
     pub move_type: MoveType
 }
 
-impl Move{
+#[derive(Debug)]
+pub enum UserAction<MoveAction> {
+    OfferDraw,
+    AcceptDraw,
+    Resign,
+    Move(MoveAction),
+    Error
+}
+
+pub type Action = UserAction<MoveAction>;
+
+impl MoveAction {
     pub fn new(from: Location, to: Location, move_type: MoveType) -> Self{
         Self{from, to, move_type}
     }
