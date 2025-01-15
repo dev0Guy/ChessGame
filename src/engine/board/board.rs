@@ -62,9 +62,8 @@ impl Board {
         )
             .unwrap();
         println!("{}", FILE_NAMES);
-
         for (rank, row) in self.0.iter().enumerate() {
-            print!("{} ", 8 - rank);
+            print!("{}| ", 8 - rank);
 
             for cell in row.iter() {
                 let styled = Self::styled_symbol(cell);
@@ -72,7 +71,7 @@ impl Board {
                 print!(" ");
             }
 
-            println!(" {}", 8 - rank);
+            println!("|{}", 8 - rank);
         }
         println!("{}", FILE_NAMES);
         stdout.flush().unwrap();
