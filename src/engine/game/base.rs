@@ -1,21 +1,18 @@
 use std::fmt::Debug;
-use std::io::{self, Stdin, Write};
-use regex::Regex;
 use crate::engine::board::board::Board;
 use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::board::location::{File, Location, Rank};
 use crate::engine::gui::base::GUI;
 use crate::engine::movement::moves;
-use crate::engine::movement::moves::Action;
 
 const fn get_location_by_side(side: Side) -> [(Location, Piece); 16]{
     let pieces_rank = match side {
-        Side::White => Rank::Eight,
-        Side::Black => Rank::One
+        Side::White => Rank::One,
+        Side::Black => Rank::Eight
     };
     let pawn_rank = match side {
-        Side::White => Rank::Seven,
-        Side::Black => Rank::Two
+        Side::White => Rank::Two,
+        Side::Black => Rank::Seven
     };
     [
         (Location::new(File::A, pieces_rank), Piece::new(PieceType::Rook, side)),
@@ -69,12 +66,13 @@ impl Game {
         self.reset_board();
         loop{
             self.gui.render(&self.board);
-            let user_action = self.gui.wait_and_process_event();
+            let user_action: moves::Action = self.gui.wait_and_process_event();
             match user_action {
                 moves::Action::OfferDraw => {}
                 moves::Action::Resign => {}
                 moves::Action::AcceptDraw => {}
                 moves::Action::Move(move_action) => {
+                    // Pass action to Move Gen to validate
                     self.board.action(move_action);
                 }
                 moves::Action::Error => {
