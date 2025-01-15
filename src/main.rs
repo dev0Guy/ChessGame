@@ -11,4 +11,5 @@ fn main() {
     println!("Hello, world!");
     let mut game = Game::new();
     game.start();
+//     TODO: On Game run make sure each time it get a board position from client
 }

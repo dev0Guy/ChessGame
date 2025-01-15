@@ -1,7 +1,9 @@
+use std::fmt::Debug;
+use std::io::{self, Write};
 use crate::engine::board::board::Board;
 use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::board::location::{File, Location, Rank};
-
+use crate::engine::movement::moves::{Move, MoveType};
 
 const fn get_location_by_side(side: Side) -> [(Location, Piece); 16]{
     let pieces_rank = match side {
@@ -55,8 +57,26 @@ impl Game {
 
     pub fn start(&mut self){
         self.reset_board();
-        self.board.visualize();
-        self.board.visualize();
+        let mut stdout = io::stdout();
+        loop{
+            self.board.visualize(&mut stdout);
+            let mut input = String::new();
+            writeln!(stdout, "Hello, world!").expect("Failed to write to stdout");
+            io::stdin()
+                .read_line(&mut input) // Read input and store it in the String
+                .expect("Failed to read line");
+            println!("Hello, {}!", input.trim());
+        }
+
+        // // self.board.visualize();
+        // let _move = Move::new(
+        //     Location::new(File::A, Rank::Two),
+        //     Location::new(File::A, Rank::Three),
+        //     MoveType::Normal
+        // );
+        // self.board.action(_move);
+        // clearscreen::clear().expect("failed to clear screen");
+        // self.board.visualize();
     }
 
 }

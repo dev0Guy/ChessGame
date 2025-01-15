@@ -1,16 +1,11 @@
-use crossterm::{
-    cursor,
-    execute,
-    style::{style, Color, PrintStyledContent, StyledContent, Stylize},
-    terminal::{Clear, ClearType},
-};
-use std::io::{stdout, Write};
+use std::io;
 use std::ops::{Index, IndexMut};
+use crossterm::style::{style, Color, StyledContent, Stylize};
 use crate::engine::board::location::Location;
 use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::movement::moves::Move;
 
-const FILE_NAMES: &'static str = "  A B C D E F G H";
+const FILE_NAMES: &'static str = "   A B C D E F G H";
 
 #[derive(Debug)]
 pub struct Board([[Option<Piece>; 8]; 8]);
@@ -53,28 +48,17 @@ impl Board {
         }
     }
 
-    pub fn visualize(&self) {
-        let mut stdout = stdout();
-        execute!(
-            stdout,
-            Clear(ClearType::All),
-            cursor::MoveTo(0, 0)
-        )
-            .unwrap();
-        println!("{}", FILE_NAMES);
+    pub fn visualize(&self, writer: &mut impl io::Write) {
+        writeln!(writer, "{}", FILE_NAMES).unwrap();
         for (rank, row) in self.0.iter().enumerate() {
-            print!("{}| ", 8 - rank);
-
+            write!(writer, "{}|", 8 - rank).unwrap();
             for cell in row.iter() {
                 let styled = Self::styled_symbol(cell);
-                execute!(stdout, PrintStyledContent(styled)).unwrap();
-                print!(" ");
+                write!(writer, " {}", styled).unwrap();
             }
-
-            println!("|{}", 8 - rank);
+            writeln!(writer, "|{}", 8 - rank).unwrap();
         }
-        println!("{}", FILE_NAMES);
-        stdout.flush().unwrap();
+        writeln!(writer, "{}", FILE_NAMES).unwrap();
     }
 
     pub fn action(&mut self, move_action: Move) {
