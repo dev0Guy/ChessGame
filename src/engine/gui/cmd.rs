@@ -15,6 +15,7 @@ pub struct CommandPromptGUI{
 
 const FILE_NAMES_ROW: &'static str = "   A B C D E F G H";
 const MOVE_REGEX: &'static str = r"^move\s+([a-h][1-8])\s+([a-h][1-8])$";
+const SHOW_REGEX: &'static str = r"^show\s+([a-h][1-8])$";
 
 
 impl CommandPromptGUI{
@@ -54,11 +55,19 @@ impl CommandPromptGUI{
     fn extract_move(regex: Regex, s: &str) -> moves::Action{
         let caps = regex.captures(s).unwrap();
         let from = caps.get(1).unwrap().as_str();
-        let mut chars = from.chars();
         let to = caps.get(2).unwrap().as_str();
         let from = Location::from(from).unwrap();
         let to = Location::from(to).unwrap();
-        moves::Action::Move(moves::MoveAction::new(from, to, moves::MoveType::Normal))
+        let x = moves::Action::Move(moves::MoveAction::new(from, to, moves::MoveType::Normal));
+        println!("{:?}",x);
+        x
+    }
+
+    fn extract_show(regex: Regex, s: &str) -> moves::Action{
+        let caps = regex.captures(s).unwrap();
+        let from = caps.get(1).unwrap().as_str();
+        let from = Location::from(from).unwrap();
+        moves::Action::ShowMoveOption(from)
     }
 
 }
@@ -80,10 +89,12 @@ impl GUI<moves::Action> for CommandPromptGUI{
 
     fn wait_and_process_event(&mut self) -> moves::Action {
         let move_regex = Regex::new(MOVE_REGEX).unwrap();
+        let show_regex = Regex::new(SHOW_REGEX).unwrap();
         match self.receive_input().as_str() {
-            "quit" | "q" => return moves::Action::Resign,
-            "draw" => return moves::Action::OfferDraw,
-            "accept" => return moves::Action::AcceptDraw,
+            "quit" | "q" => moves::Action::Resign,
+            "draw" => moves::Action::OfferDraw,
+            "accept" => moves::Action::AcceptDraw,
+            s if show_regex.is_match(s) => Self::extract_show(show_regex, s),
             s if move_regex.is_match(s) => Self::extract_move(move_regex, s),
             _ => moves::Action::Error,
         }

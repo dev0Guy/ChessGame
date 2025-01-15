@@ -78,6 +78,9 @@ impl Game {
                 moves::Action::Error => {
                     println!("Error");
                 }
+                moves::Action::ShowMoveOption(x) => {
+                    println!("Called Show on {:?}", x)
+                }
             }
         }
     }

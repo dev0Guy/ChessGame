@@ -27,6 +27,7 @@ pub enum UserAction<MoveAction> {
     AcceptDraw,
     Resign,
     Move(MoveAction),
+    ShowMoveOption(Location),
     Error
 }
 
