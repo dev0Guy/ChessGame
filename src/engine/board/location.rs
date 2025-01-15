@@ -40,7 +40,7 @@ impl File {
 impl Rank {
 
     pub fn from_char(c: char) -> Option<Self> {
-       Self::from_repr(8 - c.to_digit(10).unwrap() as usize)
+       Self::from_repr((c.to_digit(10).unwrap() as usize - 1))
     }
 }
 

@@ -12,13 +12,13 @@ impl Index<Location> for Board {
     type Output = Option<Piece>;
 
     fn index(&self, index: Location) -> &Self::Output {
-        &self.0[index.rank as usize][index.file as usize]
+        &self.0[7 - index.rank as usize][index.file as usize]
     }
 }
 
 impl IndexMut<Location> for Board {
     fn index_mut(&mut self, index: Location) -> &mut Self::Output {
-        &mut self.0[index.rank as usize][index.file as usize]
+        &mut self.0[7 - index.rank as usize][index.file as usize]
     }
 }
 
