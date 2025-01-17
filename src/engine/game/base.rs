@@ -6,6 +6,7 @@ use crate::engine::gui::base::GUI;
 use crate::engine::move_generator::pawn::PawnMoveGen;
 use crate::engine::move_generator::base::{MoveGenerator};
 use std::fmt::Debug;
+use crate::engine::move_generator::bishop::BishopMoveGen;
 
 /// Initial chess positions of the white pieces.
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
