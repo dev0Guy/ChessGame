@@ -10,6 +10,6 @@ pub(crate) enum PieceMovementType {
 }
 
 
-pub(super) trait MoveGenerator {
-    fn generate_moves(&self, board: &board::Board, loc: Location, side: Side) -> Vec<PieceMovementType>;
+pub(crate) trait MoveGenerator {
+    fn generate_moves(board: &board::Board, loc: Location, side: Side) -> Vec<PieceMovementType>;
 }

@@ -1,2 +1,2 @@
-mod pawn;
-mod base;
+pub mod base;
+pub mod pawn;
