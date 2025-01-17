@@ -1,2 +1,5 @@
 pub mod base;
-pub mod pawn;
+pub(crate) mod pawn;
+pub(crate) mod bishop;
+mod rock;
+mod queen;
