@@ -3,6 +3,8 @@ use crate::engine::board::location::{File, Location, Rank};
 use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::game::user_actions;
 use crate::engine::gui::base::GUI;
+use crate::engine::move_generator::pawn::PawnMoveGen;
+use crate::engine::move_generator::base::{MoveGenerator};
 use std::fmt::Debug;
 
 /// Initial chess positions of the white pieces.
@@ -153,7 +155,15 @@ impl Game {
         match self.board[action.from] {
             None => false,
             Some(selected_piece) if selected_piece.side != self.active => false,
-            Some(_) => {
+            Some(piece) => {
+                match piece.piece_type {
+                    PieceType::Pawn => {}
+                    PieceType::Rook => {}
+                    PieceType::Knight => {}
+                    PieceType::Bishop => {}
+                    PieceType::Queen => {}
+                    PieceType::King => {}
+                }
                 // TODO: validate check option and move for piece
                 true
             }
@@ -181,11 +191,16 @@ impl Game {
                 user_actions::Action::AcceptDraw => {
                     // TODO: ADD
                 }
-                user_actions::Action::ShowMoveOption(x) => {
-                    // TODO:
-                    // Maybe should pass to gui function to show available action and
-                    // show on screen with interstate way.
-                    println!("Called Show on {:?}", x)
+                user_actions::Action::ShowMoveOption(x) if self.board[x].is_some() => {
+                    let values = match self.board[x].unwrap().piece_type {
+                        PieceType::Pawn => { PawnMoveGen::generate_moves(&self.board, x, self.active) },
+                        PieceType::Rook => { todo!()},
+                        PieceType::Knight => {todo!()},
+                        PieceType::Bishop => {todo!()},
+                        PieceType::Queen => {todo!()},
+                        PieceType::King => {todo!()},
+                    };
+                    println!("Called Show on {:?}", values)
                 }
                 user_actions::Action::Move(move_action) if self.validate_move(&move_action) => {
                     self.board.action(move_action);

@@ -1,6 +1,6 @@
 use crate::engine::board::board;
 use crate::engine::board::location::{Location, Rank};
-use crate::engine::board::pieces::Side;
+use crate::engine::board::pieces::{Piece, Side};
 use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 
 /// A move generator for pawn pieces in chess.
@@ -25,6 +25,13 @@ impl PawnMoveGen {
         }
     }
 
+    fn get_promotion_rank(side: Side) -> Rank {
+        match side {
+            Side::White => Rank::Eight,
+            Side::Black => Rank::One
+        }
+    }
+
     /// Returns the move direction for pawns based on their side.
     ///
     /// ## Parameters
@@ -39,46 +46,57 @@ impl PawnMoveGen {
         }
     }
 
-    /// Adds a valid relocation move to the list if the target location is empty.
+    /// Checks if a move to the specified location is valid for relocation.
+    ///
+    /// This function verifies whether the given target location is valid
+    /// (i.e., within the bounds of the board and unoccupied). If the location is valid,
+    /// it returns the location; otherwise, it returns `None`.
     ///
     /// ## Parameters
-    /// - `board`: The current game board.
-    /// - `loc`: The target location as a `Result` (contains the location or an error message).
-    /// - `moves`: The list of moves to which the valid move will be added.
+    /// - `board`: A reference to the current game board.
+    /// - `loc`: A `Result` containing the target location (`Ok(Location)`) or an error message (`Err(String)`).
     ///
-    /// ## Notes
-    /// - The move is only added if the location is valid and unoccupied.
-    fn add_move_if_valid(
+    /// ## Returns
+    /// - `Some(Location)`: The valid target location if the move is within bounds and the square is unoccupied.
+    /// - `None`: If the location is out of bounds or the square is occupied.
+    fn check_valid_move(
         board: &board::Board,
         loc: Result<Location, String>,
-        moves: &mut Vec<PieceMovementType>,
-    ) {
-        if let Ok(valid_loc) = loc {
-            if board[valid_loc].is_none() {
-                moves.push(PieceMovementType::Relocate(valid_loc));
-            }
+    ) -> Option<Location>{
+        match loc {
+            Ok(valid_loc) if board[valid_loc].is_none() => Some(valid_loc),
+            _ => None
         }
     }
 
-    /// Adds a valid capture move to the list if the target location contains an enemy piece.
+
+    /// Checks if a move to the specified location is valid for capturing an enemy piece.
+    ///
+    /// This function verifies whether the given target location is valid
+    /// (i.e., within the bounds of the board and occupied by an opponent's piece). If the location is valid for capture,
+    /// it returns the location; otherwise, it returns `None`.
     ///
     /// ## Parameters
-    /// - `board`: The current game board.
-    /// - `loc`: The target location as a `Result` (contains the location or an error message).
-    /// - `side`: The side of the current pawn (`Side::White` or `Side::Black`).
-    /// - `moves`: The list of moves to which the valid capture will be added.
-    fn add_capture_if_valid(
+    /// - `board`: A reference to the current game board.
+    /// - `loc`: A `Result` containing the target location (`Ok(Location)`) or an error message (`Err(String)`).
+    /// - `side`: The side of the current piece (`Side::White` or `Side::Black`).
+    ///
+    /// ## Returns
+    /// - `Some(Location)`: The valid target location if the move is within bounds and the square is occupied by an opponent's piece.
+    /// - `None`: If the location is out of bounds or the square is unoccupied or occupied by a friendly piece.
+    fn check_valid_capture(
         board: &board::Board,
         loc: Result<Location, String>,
         side: Side,
-        moves: &mut Vec<PieceMovementType>,
-    ) {
-        if let Ok(valid_loc) = loc {
-            if let Some(piece) = board[valid_loc] {
-                if piece.side != side {
-                    moves.push(PieceMovementType::Capture(valid_loc));
+    )-> Option<Location> {
+        match loc {
+            Ok(valid_loc) => {
+                match board[valid_loc] {
+                    Some(piece) if piece.side != side => return Some(valid_loc),
+                    _ => { None},
                 }
             }
+            _ => None
         }
     }
 }
@@ -107,21 +125,35 @@ impl MoveGenerator for PawnMoveGen {
     ) -> Vec<PieceMovementType> {
         let mut moves = Vec::new();
         let direction = Self::get_move_direction(side);
+        let promotion_rank = Self::get_promotion_rank(side);
         let is_in_start_rank = loc.rank == Self::get_start_rank(side);
         let single_step_loc = loc.offset(direction, 0);
         let double_step_loc = loc.offset(2 * direction, 0);
 
-        if let Ok(single_loc) = single_step_loc {
-            Self::add_move_if_valid(board, Ok(single_loc), &mut moves);
-            let is_frivolous_cell_empty = board[single_loc].is_none();
-            if is_in_start_rank && is_frivolous_cell_empty{
-                Self::add_move_if_valid(board, double_step_loc, &mut moves);
+        if let Some(single_loc) = Self::check_valid_move(board, single_step_loc){
+            moves.push(PieceMovementType::Relocate(single_loc));
+            if is_in_start_rank && board[single_loc].is_none(){
+                if let Some(double_loc) = Self::check_valid_move(board, double_step_loc){
+                    moves.push(PieceMovementType::Relocate(double_loc));
+                }
             }
         }
 
         for &dx in &[-1, 1] {
-            Self::add_capture_if_valid(board, loc.offset(direction, dx), side, &mut moves);
+            let capture_loc = loc.offset(direction, dx);
+            if let Some(capture_loc) = Self::check_valid_capture(board, capture_loc, side) {
+                moves.push(PieceMovementType::Capture(capture_loc));
+            }
         }
+
+        moves.iter_mut().for_each(|mv| {
+            if let PieceMovementType::Relocate(target) | PieceMovementType::Capture(target) = mv {
+                if target.rank == promotion_rank {
+                    *mv = PieceMovementType::Promotion(*target);
+                }
+            }
+        });
+
         moves
     }
 }
@@ -219,4 +251,50 @@ mod tests {
         assert_eq!(moves.len(), 2);
     }
 
+    #[test]
+    fn test_pawn_promotion_white() {
+        let mut board = Board::new();
+        let loc = Location::new(File::E, Rank::Seven);
+        let pawn = Piece::new(PieceType::Pawn, Side::White);
+        board[loc] = Some(pawn);
+
+        let moves = PawnMoveGen::generate_moves(&board, loc, Side::White);
+
+        assert!(moves.contains(&PieceMovementType::Promotion(Location::new(File::E, Rank::Eight))));
+        assert_eq!(moves.len(), 1);
+    }
+
+    #[test]
+    fn test_pawn_promotion_black() {
+        let mut board = Board::new();
+        let loc = Location::new(File::E, Rank::Two);
+        let pawn = Piece::new(PieceType::Pawn, Side::Black);
+        board[loc] = Some(pawn);
+
+        let moves = PawnMoveGen::generate_moves(&board, loc, Side::Black);
+
+        assert!(moves.contains(&PieceMovementType::Promotion(Location::new(File::E, Rank::One))));
+        assert_eq!(moves.len(), 1);
+    }
+
+    #[test]
+    fn test_pawn_promotion_with_capture() {
+        let mut board = Board::new();
+        let loc = Location::new(File::E, Rank::Seven);
+        let pawn = Piece::new(PieceType::Pawn, Side::White);
+        board[loc] = Some(pawn);
+
+        // Place enemy pieces diagonally for capture
+        let left_capture_loc = Location::new(File::D, Rank::Eight);
+        let right_capture_loc = Location::new(File::F, Rank::Eight);
+        board[left_capture_loc] = Some(Piece::new(PieceType::Pawn, Side::Black));
+        board[right_capture_loc] = Some(Piece::new(PieceType::Pawn, Side::Black));
+
+        let moves = PawnMoveGen::generate_moves(&board, loc, Side::White);
+
+        assert!(moves.contains(&PieceMovementType::Promotion(Location::new(File::E, Rank::Eight))));
+        assert!(moves.contains(&PieceMovementType::Promotion(left_capture_loc)));
+        assert!(moves.contains(&PieceMovementType::Promotion(right_capture_loc)));
+        assert_eq!(moves.len(), 3);
+    }
 }
