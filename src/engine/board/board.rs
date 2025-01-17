@@ -1,7 +1,7 @@
 use std::ops::{Index, IndexMut};
 use crate::engine::board::location::Location;
 use crate::engine::board::pieces::{Piece};
-use crate::engine::movement::moves::MoveAction;
+use crate::engine::game::user_actions::MoveAction;
 
 const FILE_NAMES: &'static str = "   A B C D E F G H";
 
