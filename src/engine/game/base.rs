@@ -197,6 +197,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// ## Returns
     /// - A `Iterator<Location>` containing all valid locations the piece can move to.
     fn get_moves_by_type(&self, p_type: PieceType, loc: Location, side: Side) -> impl Iterator<Item = Location>{
+        // TODO: replace, calculate in advance for each piece x-ray of action in position and validate by first and by all
         get_move_generator(p_type)(&self.board, loc, side)
             .into_iter()
             .map(|x| { x.location() })
@@ -215,6 +216,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// - `false` if the move is invalid (e.g., no piece at the `from` location, the piece
     ///   does not belong to the active side, or the target location is not valid).
     fn validate_move(&self, action: &MoveAction) -> bool {
+        // TODO: update & between possible moves with user move if 0 then false else true
         match self.board[action.from] {
             Some(piece) if piece.side == self.active => {
                 self.get_moves_by_type(piece.piece_type, action.from, piece.side)
@@ -224,65 +226,64 @@ impl<D: GUI<user_actions::Action>> Game<D> {
         }
     }
 
-    /// Attempts to execute a move and validates its legality.
+    /// Attempts to execute a move, ensuring it does not leave the king in check.
     ///
-    /// This function simulates the execution of a move while ensuring it does not leave
-    /// the current player's king in check. If the move is valid, the board state is updated,
-    /// the king's position is adjusted (if the king moves), and the active side is switched.
-    /// If the move is invalid (leaves the king in check), the board is reverted to its
-    /// original state, and an error is returned.
+    /// This function validates and applies a move if it is legal. It ensures that the move does
+    /// not leave the current player's king in check. If the move is invalid, the function returns
+    /// an error. If valid, the board is updated, the active player's king position is adjusted
+    /// if necessary, and the active side is switched.
     ///
-    /// ## Parameters
-    /// - `action`: A reference to the `MoveAction` struct representing the move to be attempted.
+    /// # Parameters
+    /// - `action`: A reference to the `MoveAction` struct representing the move to be executed.
     ///
-    /// ## Returns
+    /// # Returns
     /// - `Ok(())` if the move is valid and successfully executed.
-    /// - `Err(String)` if the move is invalid, with an error message indicating the reason.
-    ///
-    /// ## Behavior
-    /// - The function saves the original state of the board and the king's position before simulating the move.
-    /// - If the move involves the king, its position is temporarily updated for validation.
-    /// - The function checks if the move leaves the king in check using `KingMoveGen::is_checked`.
-    /// - If the move is invalid, the board state is reverted, and the function returns an error.
-    /// - If the move is valid, the board state is updated, and the active side is switched.
+    /// - `Err(String)` if the move is invalid, with a descriptive error message.
     fn try_move(
         &mut self,
         action: &MoveAction,
     ) -> Result<(), String>{
-        let mut king_loc = self.king_pos[self.active as usize];
-        let from_state = self.board[action.from].clone();
-        let to_state = self.board[action.to].clone();
-        match from_state {
-            Some(piece) if piece.piece_type == PieceType::King => {
-                king_loc = action.to;
-            },
-            _ => {},
-        };
-        self.board.action(action);
-        if KingMoveGen::is_checked(&king_loc, &self.board){
-            self.board[action.from] = from_state;
-            self.board[action.to] = to_state;
-            return Err(format!("{:?} is in correct", action));
+        if self.check_is_check_and_rollback(action) {
+            return Err(format!("{:?} is invalid as it leaves the king in check.", action));
         }
-        self.king_pos[self.active as usize] = action.to;
+
+        self.board.action(action);
+
+        if let Some(piece) = self.board[action.to] {
+            if piece.piece_type == PieceType::King {
+                self.king_pos[self.active as usize] = action.to;
+            }
+        }
+
         Self::switch_active_side(&mut self.active);
         Ok(())
     }
 
+    /// Simulates a move and checks if it leaves the current player's king in check.
+    /// # Parameters
+    /// - `action`: A reference to the `MoveAction` struct representing the move to be simulated.
+    ///
+    /// # Returns
+    /// - `true` if the move leaves the king in check.
+    /// - `false` if the move does not leave the king in check.
+    #[inline]
     fn check_is_check_and_rollback(&mut self, action: &MoveAction) -> bool {
         let mut king_loc = self.king_pos[self.active as usize];
         let from_state = self.board[action.from].clone();
         let to_state = self.board[action.to].clone();
-        match from_state {
-            Some(piece) if piece.piece_type == PieceType::King => {
+
+        if let Some(piece) = from_state {
+            if piece.piece_type == PieceType::King {
                 king_loc = action.to;
-            },
-            _ => {},
-        };
+            }
+        }
         self.board.action(action);
+
         let is_checked = KingMoveGen::is_checked(&king_loc, &self.board);
+
         self.board[action.from] = from_state;
         self.board[action.to] = to_state;
+
         is_checked
     }
 
