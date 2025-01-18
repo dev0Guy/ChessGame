@@ -65,7 +65,7 @@ impl Board {
     ///
     /// ## Parameters
     /// - `move_action`: The move to be executed, containing `from` and `to` locations.
-    pub fn action(&mut self, move_action: MoveAction) {
+    pub fn action(&mut self, move_action: &MoveAction) {
         self[move_action.to] = self[move_action.from];
         self[move_action.from] = None;
     }

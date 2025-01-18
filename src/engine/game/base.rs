@@ -4,11 +4,8 @@ use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::game::{get_move_generator, user_actions};
 use crate::engine::gui::base::GUI;
 use crate::engine::move_generator::king::KingMoveGen;
-
-
-
-use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 use std::fmt::Debug;
+use crate::engine::game::user_actions::MoveAction;
 
 /// Initial chess positions of the white pieces.
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
@@ -183,57 +180,67 @@ impl Game {
             .collect::<Vec<Location>>()
     }
 
-    /// Checks if the king at the specified location is in check.
-    ///
-    /// This function determines if the king at the given location is under attack
-    /// by any opponent piece. It works by generating all possible moves for the king
-    /// and checking if any of these moves result in a capture of the king.
-    ///
-    /// # Arguments
-    ///
-    /// * `board` - A reference to the current game board.
-    /// * `king_loc` - The location of the king to be checked.
-    ///
-    /// # Returns
-    ///
-    /// * `true` if the king is in check, i.e., under attack by an opponent piece.
-    /// * `false` otherwise.
-    fn is_checked(board: &Board, king_loc: Location) -> bool {
-        match board[king_loc] {
-            Some(piece) if piece.piece_type == PieceType::King => {
-                KingMoveGen::generate_moves(board, king_loc, piece.side)
-                    .iter()
-                    .any(|movement| {
-                        matches!(movement, PieceMovementType::Capture(target) if *target == king_loc)
-                    })
-            }
-            _ => false,
-        }
-    }
 
     /// Validates if a given move is legal in the current game state.
     ///
     /// This function checks whether the move specified by the `MoveAction` is valid:
     /// - The selected piece must belong to the active side.
-    /// - The target location must be within the possible moves for the selected piece.
     ///
     /// ## Parameters
     /// - `action`: A reference to a `MoveAction` containing the `from` and `to` locations
     ///   of the piece being moved.
     ///
     /// ## Returns
-    /// - `true` if the move is valid.
     /// - `false` if the move is invalid (e.g., no piece at the `from` location, the piece
     ///   does not belong to the active side, or the target location is not valid).
     fn validate_move(&self, action: &user_actions::MoveAction) -> bool {
-        match self.board[action.from] {
-            Some(selected_piece) if selected_piece.side != self.active => false,
-            Some(piece) => {
-                let king_pos = self.king_pos[piece.side as usize];
-                self.get_moves_by_type(piece.piece_type, action.from, self.active)
-                    .contains(&action.to) && !Self::is_checked(&self.board, king_pos)
+        matches!(self.board[action.from], Some(piece) if piece.side == self.active)
+    }
+
+    fn update_king_position_if_king_position_change(&mut self, move_action: &user_actions::MoveAction){
+        if let Some(piece) = self.board[move_action.from]  {
+            if matches!(piece.piece_type, PieceType::King){
+                self.king_pos[piece.side as usize] = move_action.to;
             }
-            None => false,
+        }
+    }
+
+    /// Executes a move on the game board, handling validation and game state updates.
+    ///
+    /// This function performs the following steps:
+    /// 1. Updates the king's position if the move involves a king.
+    /// 2. Executes the move on the board.
+    /// 3. Checks if the move leaves the king in check:
+    ///    - If the king is in check after the move, the move is reverted.
+    ///    - Otherwise, the move is finalized.
+    /// 4. Switches the active player's turn.
+    ///
+    /// ## Parameters
+    /// - `action`: A `MoveAction` struct representing the move to execute, with `from` and `to` positions.
+    ///
+    /// ## Returns
+    /// - `true` if the move was successfully executed without leaving the king in check.
+    /// - `false` if the move was reverted because it left the king in check.
+    ///
+    /// ## Behavior
+    /// - If the move is valid and does not leave the king in check, the game state is updated,
+    ///   and the active player is switched.
+    /// - If the move leaves the king in check, it is reverted, and the game state remains unchanged.
+    fn execute_move(&mut self, action: MoveAction) -> bool{
+        self.update_king_position_if_king_position_change(&action);
+        let cell_before_action = self.board[action.from];
+        self.board.action(&action);
+        let is_checked = KingMoveGen::is_checked(&self.king_pos[self.active as usize], &self.board);
+        match is_checked{
+            true => {
+                self.board.action(&user_actions::MoveAction { from: action.to, to: action.from });
+                self.board[action.from] = cell_before_action;
+                false
+            }
+            false => {
+                self.switch_active_side();
+                true
+            },
         }
     }
 
@@ -266,8 +273,7 @@ impl Game {
                     }
                 }
                 user_actions::Action::Move(move_action) if self.validate_move(&move_action) => {
-                    self.board.action(move_action);
-                    self.switch_active_side();
+                    self.execute_move(move_action);
                     self.gui.render(&self.board, self.active, vec![]);
                 }
                 action => {
@@ -278,6 +284,220 @@ impl Game {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::engine::board::location::{File, Location, Rank};
+    use crate::engine::board::pieces::{Piece, PieceType, Side};
+    use crate::engine::game::user_actions::MoveAction;
+    use crate::engine::gui::cmd::CommandPromptGUI;
 
+    fn create_cmd_game() -> Game{
+        let gui: Box<dyn GUI<user_actions::Action>> = Box::new(CommandPromptGUI::new());
+        Game::new(gui)
+    }
+
+    /// from: https://lichess.org/editor/8/8/8/8/8/8/4P3/8_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/8/8/8/8/4P3/8/8/8_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_validate_move_active_player_piece() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::Two);
+
+        game.board[start_loc] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.active = Side::White;
+
+        let action = MoveAction { from: start_loc, to: Location::new(File::E, Rank::Four) };
+
+        let is_valid = game.validate_move(&action);
+
+        assert!(is_valid, "The move should be valid for the active player's piece.");
+    }
+
+    /// from: https://lichess.org/editor/8/8/8/8/8/8/4p3/8_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/8/8/8/8/8/8/8/4p3_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_validate_move_opponent_piece() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::Two);
+
+        game.board[start_loc] = Some(Piece::new(PieceType::Pawn, Side::Black));
+        game.active = Side::White;
+
+        let action = MoveAction { from: start_loc, to: Location::new(File::E, Rank::One) };
+
+        let is_valid = game.validate_move(&action);
+
+        assert!(!is_valid, "The move should be invalid when attempting to move the opponent's piece.");
+    }
+
+    /// from: https://lichess.org/editor/8/8/8/8/8/8/8/8_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/8/8/8/8/8/8/8/8_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_validate_move_empty_square() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::Two);
+
+        game.board[start_loc] = None;
+        game.active = Side::White;
+
+        let action = MoveAction { from: start_loc, to: Location::new(File::E, Rank::Four) };
+
+        let is_valid = game.validate_move(&action);
+
+        assert!(!is_valid, "The move should be invalid when the starting square is empty.");
+    }
+
+    /// from: https://lichess.org/editor/4k3/8/8/8/8/8/4P3/4K3_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/4k3/8/8/8/4P3/8/8/4K3_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_execute_valid_move() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::Two);
+        let end_loc = Location::new(File::E, Rank::Four);
+
+        game.board[start_loc] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.active = Side::White;
+
+        let action = MoveAction { from: start_loc, to: end_loc };
+
+        let result = game.execute_move(action);
+
+        assert!(result, "The move should be valid and executed.");
+        println!("{:?}",game.board[start_loc]);
+        println!("{:?}",game.board[end_loc]);
+        assert!(game.board[end_loc].is_some(), "The piece should have moved to the target location.");
+        assert!(game.board[start_loc].is_none(), "The starting location should be empty.");
+        assert_eq!(game.active, Side::Black, "The active side should switch after a valid move.");
+    }
+
+    /// from: https://lichess.org/editor/4r3/8/8/8/8/8/4R3/4K3_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/4r3/8/8/8/8/8/5R2/4K3_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_execute_move_invalid_due_to_check() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::Two);
+        let end_loc = Location::new(File::F, Rank::Two);
+        let king_loc = Location::new(File::E, Rank::One);
+        let opponent_rook_loc = Location::new(File::E, Rank::Eight);
+
+        game.board[start_loc] = Some(Piece::new(PieceType::Rook, Side::White));
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+
+        game.board[opponent_rook_loc] = Some(Piece::new(PieceType::Rook, Side::Black));
+        game.king_pos[Side::White as usize] = king_loc;
+        game.active = Side::White;
+
+        let action = MoveAction { from: start_loc, to: end_loc };
+
+        let result = game.execute_move(action);
+
+        assert!(!result, "The move should be invalid because it leaves the king in check.");
+        assert!(game.board[start_loc].is_some(), "The starting location should remain occupied after the move is reverted.");
+        assert!(game.board[end_loc].is_none(), "The target location should remain empty after the move is reverted.");
+        assert_eq!(game.active, Side::White, "The active side should not switch after an invalid move.");
+    }
+
+    /// from: https://lichess.org/editor/8/8/8/8/8/8/8/4K3_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/8/8/8/8/8/8/4K3/8_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_execute_move_updates_king_position() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::One);
+        let end_loc = Location::new(File::E, Rank::Two);
+
+        game.board[start_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = start_loc;
+        game.active = Side::White;
+
+        let action = MoveAction { from: start_loc, to: end_loc };
+
+        let result = game.execute_move(action);
+
+        assert!(result, "The king's move should be valid and executed.");
+        assert!(game.board[end_loc].is_some(), "The king should have moved to the target location.");
+        assert!(game.board[start_loc].is_none(), "The starting location should be empty.");
+        assert_eq!(game.king_pos[Side::White as usize], end_loc, "The king's position should be updated.");
+        assert_eq!(game.active, Side::Black, "The active side should switch after a valid move.");
+    }
+
+    /// from: https://lichess.org/editor/5r2/8/8/8/8/8/8/4K3_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/5r2/8/8/8/8/8/8/5K2_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_execute_move_king_to_check_position() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::One);
+        let end_loc = Location::new(File::F, Rank::One);
+        let other_side_rook_loc = Location::new(File::F, Rank::Eight);
+
+        game.board[start_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.board[other_side_rook_loc] = Some(Piece::new(PieceType::Rook, Side::Black));
+        game.king_pos[Side::White as usize] = start_loc;
+        game.active = Side::White;
+
+        let action = MoveAction { from: start_loc, to: end_loc };
+
+        let result = game.execute_move(action);
+
+        assert!(!result, "The king's move should be valid and executed.");
+        assert!(game.board[end_loc].is_none(), "The king should haven't moved to the target location.");
+        assert!(game.board[start_loc].is_some(), "King should stayed in the starting location.");
+        assert_eq!(game.king_pos[Side::White as usize], end_loc, "The king's position should be updated.");
+        assert_eq!(game.active, Side::White, "The active side should haven't switch after a invalid move.");
+    }
+
+    /// from: https://lichess.org/editor/4R3/8/8/8/8/8/8/5K2_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/5R2/8/8/8/8/8/8/5K2_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_execute_move_king_to_none_check_position() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::One);
+        let end_loc = Location::new(File::F, Rank::One);
+        let other_side_rook_loc = Location::new(File::F, Rank::Eight);
+
+        game.board[start_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.board[other_side_rook_loc] = Some(Piece::new(PieceType::Rook, Side::White));
+        game.king_pos[Side::White as usize] = start_loc;
+        game.active = Side::White;
+
+        let action = MoveAction { from: start_loc, to: end_loc };
+
+        let result = game.execute_move(action);
+
+        assert!(!result, "The king's move should be valid and executed.");
+        assert!(game.board[end_loc].is_none(), "The king should haven't moved to the target location.");
+        assert!(game.board[start_loc].is_some(), "King should stayed in the starting location.");
+        assert_eq!(game.king_pos[Side::White as usize], end_loc, "The king's position should be updated.");
+        assert_eq!(game.active, Side::White, "The active side should haven't switch after a invalid move.");
+    }
+
+    /// from: https://lichess.org/editor/5r2/8/8/8/8/8/5B2/5K2_w_HAha_-_0_1?color=white
+    /// to: https://lichess.org/editor/5r2/8/8/2B5/8/8/8/5K2_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_execute_move_pined_piece() {
+        let mut game = create_cmd_game();
+        let start_loc = Location::new(File::E, Rank::One);
+        let block_loc = Location::new(File::E, Rank::Two);
+        let end_loc = Location::new(File::C, Rank::Five);
+        let other_side_rook_loc = Location::new(File::E, Rank::Eight);
+
+        game.board[block_loc] = Some(Piece::new(PieceType::Bishop, Side::White));
+        game.board[start_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.board[other_side_rook_loc] = Some(Piece::new(PieceType::Rook, Side::Black));
+        game.king_pos[Side::White as usize] = start_loc;
+        game.active = Side::White;
+
+        let action = MoveAction { from: block_loc, to: end_loc };
+
+        let result = game.execute_move(action);
+
+        assert!(!result, "The bishop move should be valid and executed, its pined.");
+        assert!(game.board[end_loc].is_none(), "The king should haven't moved to the target location.");
+        assert!(game.board[start_loc].is_some(), "King should stayed in the starting location.");
+        assert_eq!(game.king_pos[Side::White as usize], start_loc, "The king's position not should be updated.");
+        assert_eq!(game.active, Side::White, "The active side should haven't switch after a invalid move.");
+    }
+
+}
 
 

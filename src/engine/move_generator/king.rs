@@ -1,6 +1,8 @@
+use strum::IntoEnumIterator;
 use crate::engine::board::board;
 use crate::engine::board::location::Location;
-use crate::engine::board::pieces::Side;
+use crate::engine::board::pieces::{Piece, PieceType, Side};
+use crate::engine::game::get_move_generator;
 use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 
 const KING_POSSIBLE_DIRECTIONS: [(i8, i8); 8] = [
@@ -43,11 +45,37 @@ impl MoveGenerator for KingMoveGen {
     }
 }
 
-impl KingMoveGen{
-    fn is_checked(loc: Location, board: &board::Board) -> bool{
-        true
+impl KingMoveGen {
+    /// Checks if the king is in check.
+    ///
+    /// ## Parameters
+    /// - `board`: A reference to the current game board.
+    /// - `king_loc`: The location of the king.
+    /// - `side`: The side of the king (`Side::White` or `Side::Black`).
+    ///
+    /// ## Returns
+    /// - `true` if the king is in check.
+    /// - `false` otherwise.
+    pub(crate) fn is_checked(k_loc: &Location, board: &board::Board) -> bool {
+        if let Some(piece) = board[*k_loc] {
+            for piece_type in PieceType::iter(){
+                let attacked_moves: Vec<PieceMovementType> = get_move_generator(piece_type)(board, *k_loc, piece.side);
+                let is_checked = attacked_moves
+                    .iter()
+                    .any(|movement| {
+                        match movement {
+                            PieceMovementType::Capture(attack_loc) => {
+                                matches!(board[*attack_loc], Some(piece) if piece.piece_type == piece_type)
+                            }
+                            _ => false
+                        }
+                    });
+                if is_checked {return true; }
+            }
+        }
+        false
     }
- }
+}
 
 
 #[cfg(test)]
@@ -150,5 +178,80 @@ mod tests {
 
         assert!(expected_moves.iter().all(|&loc| moves.contains(&PieceMovementType::Relocate(loc))));
         assert_eq!(moves.len(), expected_moves.len());
+    }
+
+    #[test]
+    fn test_king_not_in_check_empty_board() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::D, Rank::Four);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+
+        let in_check = KingMoveGen::is_checked(&king_loc, &board);
+
+        assert!(!in_check, "King should not be in check on an empty board.");
+    }
+
+    #[test]
+    fn test_king_in_check_by_rook() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::D, Rank::Four);
+        let attacker_loc = Location::new(File::D, Rank::Eight);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+
+        board[attacker_loc] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        let in_check = KingMoveGen::is_checked(&king_loc, &board);
+
+        assert!(in_check, "King should be in check by a rook.");
+    }
+
+    #[test]
+    fn test_king_in_check_by_knight() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::E, Rank::Four);
+        let attacker_loc = Location::new(File::G, Rank::Five);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+
+        board[attacker_loc] = Some(Piece::new(PieceType::Knight, Side::Black));
+
+        let in_check = KingMoveGen::is_checked(&king_loc, &board);
+
+        assert!(in_check, "King should be in check by a knight.");
+    }
+
+    #[test]
+    fn test_king_not_in_check_blocked_by_friendly_piece() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::D, Rank::Four);
+        let attacker_loc = Location::new(File::D, Rank::Eight);
+        let blocker_loc = Location::new(File::D, Rank::Six);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        board[attacker_loc] = Some(Piece::new(PieceType::Rook, Side::Black));
+        board[blocker_loc] = Some(Piece::new(PieceType::Pawn, Side::White));
+
+        let in_check = KingMoveGen::is_checked(&king_loc, &board);
+
+        assert!(!in_check, "King should not be in check if the attack is blocked by a friendly piece.");
+    }
+
+    #[test]
+    fn test_king_in_check_by_multiple_attackers() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::D, Rank::Four);
+        let attacker_1_loc = Location::new(File::D, Rank::Eight);
+        let attacker_2_loc = Location::new(File::H, Rank::Four);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+
+        board[attacker_1_loc] = Some(Piece::new(PieceType::Rook, Side::Black));
+        board[attacker_2_loc] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        let in_check = KingMoveGen::is_checked(&king_loc, &board);
+
+        assert!(in_check, "King should be in check by multiple attackers.");
     }
 }
