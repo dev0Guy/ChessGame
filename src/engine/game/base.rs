@@ -1,18 +1,13 @@
 use crate::engine::board::board::Board;
 use crate::engine::board::location::{File, Location, Rank};
 use crate::engine::board::pieces::{Piece, PieceType, Side};
-use crate::engine::game::user_actions;
+use crate::engine::game::{get_move_generator, user_actions};
 use crate::engine::gui::base::GUI;
-use crate::engine::move_generator::pawn::PawnMoveGen;
-use crate::engine::move_generator::bishop::BishopMoveGen;
 use crate::engine::move_generator::king::KingMoveGen;
-use crate::engine::move_generator::knight::KnightMoveGen;
-use crate::engine::move_generator::queen::QueenMoveGen;
-use crate::engine::move_generator::rock::RookMoveGen;
 
 
 
-use crate::engine::move_generator::base::{MoveGenerator};
+use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 use std::fmt::Debug;
 
 /// Initial chess positions of the white pieces.
@@ -120,6 +115,8 @@ pub struct Game {
     gui: Box<dyn GUI<user_actions::Action>>,
     /// The side of player turn
     active: Side,
+    /// Current king position by type
+    king_pos: [Location; 2]
 }
 
 impl Game {
@@ -135,6 +132,7 @@ impl Game {
             board: Board::new(),
             gui,
             active: Side::White,
+            king_pos: [Location::new(File::E, Rank::One), Location::new(File::E, Rank::Eight)]
         }
     }
 
@@ -144,6 +142,7 @@ impl Game {
     /// for both white and black sides.
     fn reset_board(&mut self) {
         self.board = Board::new();
+        self.king_pos = [Location::new(File::E, Rank::One), Location::new(File::E, Rank::Eight)];
         WHITE_PIECES
             .into_iter()
             .chain(BLACK_PIECES.into_iter())
@@ -178,17 +177,38 @@ impl Game {
     /// ## Returns
     /// - A `Vec<Location>` containing all valid locations the piece can move to.
     fn get_moves_by_type(&self, p_type: PieceType, loc: Location, side: Side) -> Vec<Location>{
-        match p_type {
-            PieceType::Pawn => PawnMoveGen::generate_moves(&self.board, loc, side),
-            PieceType::Rook => RookMoveGen::generate_moves(&self.board, loc, side),
-            PieceType::Knight => KnightMoveGen::generate_moves(&self.board, loc, side),
-            PieceType::Bishop => BishopMoveGen::generate_moves(&self.board, loc, side),
-            PieceType::Queen => QueenMoveGen::generate_moves(&self.board, loc, side),
-            PieceType::King => KingMoveGen::generate_moves(&self.board, loc, side),
-        }
+        get_move_generator(p_type)(&self.board, loc, side)
             .into_iter()
             .map(|x| { x.location() })
             .collect::<Vec<Location>>()
+    }
+
+    /// Checks if the king at the specified location is in check.
+    ///
+    /// This function determines if the king at the given location is under attack
+    /// by any opponent piece. It works by generating all possible moves for the king
+    /// and checking if any of these moves result in a capture of the king.
+    ///
+    /// # Arguments
+    ///
+    /// * `board` - A reference to the current game board.
+    /// * `king_loc` - The location of the king to be checked.
+    ///
+    /// # Returns
+    ///
+    /// * `true` if the king is in check, i.e., under attack by an opponent piece.
+    /// * `false` otherwise.
+    fn is_checked(board: &Board, king_loc: Location) -> bool {
+        match board[king_loc] {
+            Some(piece) if piece.piece_type == PieceType::King => {
+                KingMoveGen::generate_moves(board, king_loc, piece.side)
+                    .iter()
+                    .any(|movement| {
+                        matches!(movement, PieceMovementType::Capture(target) if *target == king_loc)
+                    })
+            }
+            _ => false,
+        }
     }
 
     /// Validates if a given move is legal in the current game state.
@@ -209,8 +229,9 @@ impl Game {
         match self.board[action.from] {
             Some(selected_piece) if selected_piece.side != self.active => false,
             Some(piece) => {
+                let king_pos = self.king_pos[piece.side as usize];
                 self.get_moves_by_type(piece.piece_type, action.from, self.active)
-                    .contains(&action.to)
+                    .contains(&action.to) && !Self::is_checked(&self.board, king_pos)
             }
             None => false,
         }
@@ -256,3 +277,7 @@ impl Game {
         }
     }
 }
+
+
+
+

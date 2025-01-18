@@ -43,6 +43,12 @@ impl MoveGenerator for KingMoveGen {
     }
 }
 
+impl KingMoveGen{
+    fn is_checked(loc: Location, board: &board::Board) -> bool{
+        true
+    }
+ }
+
 
 #[cfg(test)]
 mod tests {
