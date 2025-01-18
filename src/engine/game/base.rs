@@ -4,9 +4,16 @@ use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::game::user_actions;
 use crate::engine::gui::base::GUI;
 use crate::engine::move_generator::pawn::PawnMoveGen;
+use crate::engine::move_generator::bishop::BishopMoveGen;
+use crate::engine::move_generator::king::KingMoveGen;
+use crate::engine::move_generator::knight::KnightMoveGen;
+use crate::engine::move_generator::queen::QueenMoveGen;
+use crate::engine::move_generator::rock::RookMoveGen;
+
+
+
 use crate::engine::move_generator::base::{MoveGenerator};
 use std::fmt::Debug;
-use crate::engine::move_generator::bishop::BishopMoveGen;
 
 /// Initial chess positions of the white pieces.
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
@@ -145,6 +152,11 @@ impl Game {
             });
     }
 
+    /// Toggles the active side in the game.
+    ///
+    /// This function switches the active player from `Side::White` to `Side::Black`
+    /// or from `Side::Black` to `Side::White`. It is typically called at the end of
+    /// a turn to alternate the active side.
     fn switch_active_side(&mut self) {
         self.active = match self.active {
             Side::White => Side::Black,
@@ -152,22 +164,55 @@ impl Game {
         };
     }
 
+    /// Generates all valid moves for a specific piece type at a given location.
+    ///
+    /// This function determines the possible moves for a piece of the specified type
+    /// (`p_type`) at the provided `loc` and for the given `side`. It uses the appropriate
+    /// move generator for each piece type.
+    ///
+    /// ## Parameters
+    /// - `p_type`: The type of the piece (`PieceType`) to generate moves for.
+    /// - `loc`: The current location of the piece on the board.
+    /// - `side`: The side (`Side::White` or `Side::Black`) of the piece.
+    ///
+    /// ## Returns
+    /// - A `Vec<Location>` containing all valid locations the piece can move to.
+    fn get_moves_by_type(&self, p_type: PieceType, loc: Location, side: Side) -> Vec<Location>{
+        match p_type {
+            PieceType::Pawn => PawnMoveGen::generate_moves(&self.board, loc, side),
+            PieceType::Rook => RookMoveGen::generate_moves(&self.board, loc, side),
+            PieceType::Knight => KnightMoveGen::generate_moves(&self.board, loc, side),
+            PieceType::Bishop => BishopMoveGen::generate_moves(&self.board, loc, side),
+            PieceType::Queen => QueenMoveGen::generate_moves(&self.board, loc, side),
+            PieceType::King => KingMoveGen::generate_moves(&self.board, loc, side),
+        }
+            .into_iter()
+            .map(|x| { x.location() })
+            .collect::<Vec<Location>>()
+    }
+
+    /// Validates if a given move is legal in the current game state.
+    ///
+    /// This function checks whether the move specified by the `MoveAction` is valid:
+    /// - The selected piece must belong to the active side.
+    /// - The target location must be within the possible moves for the selected piece.
+    ///
+    /// ## Parameters
+    /// - `action`: A reference to a `MoveAction` containing the `from` and `to` locations
+    ///   of the piece being moved.
+    ///
+    /// ## Returns
+    /// - `true` if the move is valid.
+    /// - `false` if the move is invalid (e.g., no piece at the `from` location, the piece
+    ///   does not belong to the active side, or the target location is not valid).
     fn validate_move(&self, action: &user_actions::MoveAction) -> bool {
         match self.board[action.from] {
-            None => false,
             Some(selected_piece) if selected_piece.side != self.active => false,
             Some(piece) => {
-                match piece.piece_type {
-                    PieceType::Pawn => {}
-                    PieceType::Rook => {}
-                    PieceType::Knight => {}
-                    PieceType::Bishop => {}
-                    PieceType::Queen => {}
-                    PieceType::King => {}
-                }
-                // TODO: validate check option and move for piece
-                true
+                self.get_moves_by_type(piece.piece_type, action.from, self.active)
+                    .contains(&action.to)
             }
+            None => false,
         }
     }
 
@@ -179,37 +224,35 @@ impl Game {
     /// The game continues until a termination condition (e.g., resignation or draw) is met.
     pub fn start(&mut self) {
         self.reset_board();
-        self.gui.render(&self.board, self.active);
+        self.gui.render(&self.board, self.active, vec![]);
         loop {
             let user_action: user_actions::Action = self.gui.wait_and_process_event();
             match user_action {
-                user_actions::Action::OfferDraw => {
-                    // TODO: ADD
-                }
-                user_actions::Action::Resign => {
-                    // TODO: ADD
-                }
-                user_actions::Action::AcceptDraw => {
-                    // TODO: ADD
-                }
+                user_actions::Action::OfferDraw => todo!(),
+                user_actions::Action::Resign => todo!(),
+                user_actions::Action::AcceptDraw => todo!(),
                 user_actions::Action::ShowMoveOption(x) if self.board[x].is_some() => {
-                    let values = match self.board[x].unwrap().piece_type {
-                        PieceType::Pawn => { PawnMoveGen::generate_moves(&self.board, x, self.active) },
-                        PieceType::Rook => { todo!()},
-                        PieceType::Knight => {todo!()},
-                        PieceType::Bishop => {todo!()},
-                        PieceType::Queen => {todo!()},
-                        PieceType::King => {todo!()},
-                    };
-                    println!("Called Show on {:?}", values)
+                    match self.board[x] {
+                        Some(piece) => if self.active == piece.side{
+                            let show_values = self.get_moves_by_type(
+                                piece.piece_type,
+                                x,
+                                piece.side
+                            );
+                            self.gui.render(&self.board, self.active, show_values);
+                        }
+                        _ => continue,
+                    }
+                    let show_values = self.get_moves_by_type(self.board[x].unwrap().piece_type, x, self.active);
+                    self.gui.render(&self.board, self.active, show_values);
                 }
                 user_actions::Action::Move(move_action) if self.validate_move(&move_action) => {
                     self.board.action(move_action);
                     self.switch_active_side();
-                    self.gui.render(&self.board, self.active);
+                    self.gui.render(&self.board, self.active, vec![]);
                 }
                 action => {
-                    // TODO: send to gui action is not available, enter a new one
+                    println!("{:?} is in correct", action);
                 }
             };
         }

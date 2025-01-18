@@ -3,7 +3,7 @@ use std::iter::Iterator;
 use crossterm::style::{style, Color, StyledContent, Stylize};
 use regex::Regex;
 use crate::engine::board::board::Board;
-use crate::engine::board::location::{Location};
+use crate::engine::board::location::{File, Location, Rank};
 use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::game::user_actions;
 use super::base::GUI;
@@ -16,7 +16,6 @@ pub struct CommandPromptGUI{
 const FILE_NAMES_ROW: &'static str = "   A B C D E F G H";
 const MOVE_REGEX: &'static str = r"^move\s+([a-h][1-8])\s+([a-h][1-8])$";
 const SHOW_REGEX: &'static str = r"^show\s+([a-h][1-8])$";
-
 
 impl CommandPromptGUI{
     pub fn new() -> Self {
@@ -40,7 +39,7 @@ impl CommandPromptGUI{
             Some(Piece { piece_type: PieceType::Knight, side: Side::Black }) => style("♞").with(Color::DarkGrey),
             Some(Piece { piece_type: PieceType::Pawn, side: Side::White }) => style("♙").with(Color::White),
             Some(Piece { piece_type: PieceType::Pawn, side: Side::Black }) => style("♟").with(Color::DarkGrey),
-            None => style(".").with(Color::Grey),
+            None => style("□").with(Color::Grey),
         }
     }
 
@@ -80,12 +79,17 @@ impl CommandPromptGUI{
 }
 
 impl GUI<user_actions::Action> for CommandPromptGUI{
-    fn render(&mut self, board: &Board, active_side: Side) {
+    fn render(&mut self, board: &Board, active_side: Side, show: Vec<Location>) {
         writeln!(self.writer, "{}", FILE_NAMES_ROW).unwrap();
         for (rank, row) in board.iter().enumerate() {
             write!(self.writer, "{}|", 8 - rank).unwrap();
-            for cell in row.iter() {
-                let styled = Self::styled_symbol(cell);
+            for (file, cell) in row.iter().enumerate() {
+                let mut styled = Self::styled_symbol(cell);
+                let file = File::from_repr(file).unwrap();
+                let rank = Rank::from_repr(7 - rank).unwrap();
+                if show.contains(&Location::new( file, rank )){
+                    styled = styled.with(Color::Green)
+                }
                 write!(self.writer, " {}", styled).unwrap();
             }
             writeln!(self.writer, "|{}", 8 - rank).unwrap();

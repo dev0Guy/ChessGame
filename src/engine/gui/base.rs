@@ -1,4 +1,5 @@
 use crate::engine::board::board::Board;
+use crate::engine::board::location::Location;
 use crate::engine::board::pieces::Side;
 
 /// A trait representing the graphical user interface (GUI) for any board game.
@@ -18,7 +19,7 @@ pub trait GUI<T>{
     /// ## Parameters
     /// - `game`: A reference to the current game state, represented by the [`Board`].
     /// - `active_side`: current side turn.
-    fn render(&mut self, game: &Board, active_side: Side);
+    fn render(&mut self, game: &Board, active_side: Side, show_loc: Vec<Location>);
 
     fn wait_and_process_event(&mut self) -> T;
 

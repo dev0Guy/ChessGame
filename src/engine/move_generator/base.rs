@@ -9,6 +9,17 @@ pub(crate) enum PieceMovementType {
     Promotion(Location),
 }
 
+impl PieceMovementType {
+    /// Extracts the `Location` from the `PieceMovementType`.
+    pub fn location(&self) -> Location {
+        match self {
+            PieceMovementType::Relocate(val)
+            | PieceMovementType::Capture(val)
+            | PieceMovementType::Promotion(val) => val.clone(),
+        }
+    }
+}
+
 
 pub(crate) trait MoveGenerator {
     fn generate_moves(board: &board::Board, loc: Location, side: Side) -> Vec<PieceMovementType>;
