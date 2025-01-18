@@ -317,6 +317,35 @@ impl<D: GUI<user_actions::Action>> Game<D> {
             .unwrap_or(true)
     }
 
+    /// Handles the user's input action during the game loop.
+    ///
+    /// This function processes the action provided by the user and delegates
+    /// the corresponding behavior to appropriate helper methods. Depending on
+    /// the action type, it can update the game state, render the board, or
+    fn handle_user_action(&mut self, user_action: user_actions::Action) {
+        match user_action {
+            user_actions::Action::OfferDraw => todo!(),
+            user_actions::Action::Resign => todo!(),
+            user_actions::Action::AcceptDraw => todo!(),
+            user_actions::Action::ShowMoveOption(x) => {
+                if let Some(piece) = self.board[x] {
+                    let show_values = self.get_moves_by_type(piece.piece_type, x, piece.side).collect();
+                    self.gui.render(&self.board, self.active, show_values);
+                }
+            }
+            user_actions::Action::Move(move_action) if self.validate_move(&move_action)=> {
+                match self.try_move(&move_action) {
+                    Ok(_) => self.gui.render(&self.board, self.active, vec![]),
+                    Err(_) => println!("action {:?} Invalid: cause a check", move_action),
+                };
+
+            }
+            user_actions::Action::Move(move_action)  => {
+                println!("{:?} is in correct", move_action);
+            }
+        };
+    }
+
     /// Starts the chess game.
     ///
     /// This method resets the board to its initial state and enters the main game loop,
@@ -328,25 +357,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
         self.gui.render(&self.board, self.active, vec![]);
         while !self.is_checkmate() {
             let user_action: user_actions::Action = self.gui.wait_and_process_event();
-            match user_action {
-                user_actions::Action::OfferDraw => todo!(),
-                user_actions::Action::Resign => todo!(),
-                user_actions::Action::AcceptDraw => todo!(),
-                user_actions::Action::ShowMoveOption(x) => {
-                    if let Some(piece) = self.board[x] {
-                        let show_values = self.get_moves_by_type(piece.piece_type, x, piece.side).collect();
-                        self.gui.render(&self.board, self.active, show_values);
-                    }
-                }
-                user_actions::Action::Move(move_action) if self.validate_move(&move_action)=> {
-                    let _ = self.try_move(&move_action);
-                    self.gui.render(&self.board, self.active, vec![]);
-                }
-                user_actions::Action::Move(move_action)  => {
-                    println!("{:?} is in correct", move_action);
-                },
-
-            };
+            self.handle_user_action(user_action);
         }
     }
 }
