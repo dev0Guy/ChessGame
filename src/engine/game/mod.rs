@@ -12,6 +12,7 @@ use crate::engine::move_generator::rock::RookMoveGen;
 // TODO: Organize modules to export only what needed
 pub mod base;
 pub mod user_actions;
+pub(crate) mod threat;
 
 type MoveGeneratorFn = fn(&board::Board, Location, Side) -> Vec<PieceMovementType>;
 

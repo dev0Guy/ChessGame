@@ -1,5 +1,6 @@
 use std::ops::{Index, IndexMut};
-use crate::engine::board::location::Location;
+use strum::IntoEnumIterator;
+use crate::engine::board::location::{File, Location, Rank};
 use crate::engine::board::pieces::{Piece};
 use crate::engine::game::user_actions::MoveAction;
 
@@ -12,6 +13,7 @@ const FILE_NAMES: &'static str = "   A B C D E F G H";
 /// The board supports indexing by [`Location`] and provides methods for common operations.
 #[derive(Debug)]
 pub struct Board([[Option<Piece>; 8]; 8]);
+
 
 impl Index<Location> for Board {
     type Output = Option<Piece>;
@@ -68,5 +70,24 @@ impl Board {
     pub fn action(&mut self, move_action: &MoveAction) {
         self[move_action.to] = self[move_action.from];
         self[move_action.from] = None;
+    }
+
+    pub fn to_bitboards(&self) -> [[u64; 6]; 2] {
+        let mut bitboards = [[0u64; 6]; 2];
+
+        for rank in Rank::iter() {
+            for file in File::iter() {
+                let file = file as usize;
+                let rank = rank as usize;
+                if let Some(piece) = self.0[rank][file] {
+                    let bit_index = (rank) * 8 + (file);
+                    let color_index = piece.side as usize;
+                    let piece_index = piece.piece_type as usize;
+                    bitboards[color_index][piece_index] |= 1 << bit_index;
+                }
+            }
+        }
+
+        bitboards
     }
 }

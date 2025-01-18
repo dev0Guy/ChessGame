@@ -113,4 +113,8 @@ impl Location {
             _ => Err(())
         }
     }
+
+    pub(crate) fn to_bitboard_index(&self) -> usize{
+        (self.rank as usize) * 8 + (self.file as usize)
+    }
 }

@@ -1,13 +1,17 @@
 use strum::IntoEnumIterator;
 use crate::engine::board::board;
-use crate::engine::board::location::Location;
-use crate::engine::board::pieces::{PieceType, Side};
+use crate::engine::board::board::Board;
+use crate::engine::board::location::{File, Location, Rank};
+use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::game::get_move_generator;
+use crate::engine::game::threat::ThreadBoard;
 use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 
 const KING_POSSIBLE_DIRECTIONS: [(i8, i8); 8] = [
     (0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1),
 ];
+
+const KINGS_START_POSITION: [Location; 2] = [Location::new(File::E, Rank::One), Location::new(File::E, Rank::Eight)];
 
 /// A move generator for the king piece in chess.
 ///
@@ -41,11 +45,59 @@ impl MoveGenerator for KingMoveGen {
                 }
             }
         }
+
+        Self::king_side_castling(board, &loc).map(|castling_move| moves.push(castling_move));
+        Self::queen_side_castling(board, &loc).map(|castling_move| moves.push(castling_move));
         moves
     }
 }
 
 impl KingMoveGen {
+
+    fn king_side_castling(
+        board: &Board,
+        loc: &Location
+    ) -> Option<PieceMovementType>{
+        if let piece = board[*loc] {
+            match piece {
+                Some(Piece{ piece_type: PieceType::King, side, has_moved: false}) => {
+                    let rook_loc = Location::new(File::H, loc.rank);
+                    if matches!(board[rook_loc], Some(Piece{ piece_type: PieceType::Rook, side, has_moved: false}))
+                        && board[Location::new(File::F, loc.rank)].is_none()
+                        && board[Location::new(File::G, loc.rank)].is_none()
+                    {
+                        let king_target = Location::new(File::G, loc.rank);
+                        let rook_target = Location::new(File::F, loc.rank);
+                        return Some(PieceMovementType::Castle(king_target, rook_target));
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
+    fn queen_side_castling(board: &Board, loc: &Location) -> Option<PieceMovementType>{
+        if let piece = board[*loc] {
+            match piece {
+                Some(Piece{ piece_type: PieceType::King, has_moved: false, ..}) => {
+                    let rook_loc = Location::new(File::A, loc.rank);
+                    if matches!(board[rook_loc], Some(Piece{ piece_type: PieceType::Rook, side, has_moved: false}))
+                        && board[Location::new(File::B, loc.rank)].is_none()
+                        && board[Location::new(File::C, loc.rank)].is_none()
+                        && board[Location::new(File::D, loc.rank)].is_none()
+                    {
+                        let king_target = Location::new(File::C, loc.rank);
+                        let rook_target = Location::new(File::D, loc.rank);
+                        return Some(PieceMovementType::Castle(king_target, rook_target));
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
     /// Finds all the locations of pieces that are attacking the given location.
     ///
     /// This function determines which pieces on the board are currently threatening
@@ -365,7 +417,7 @@ mod tests {
         assert!(attack_locations.is_empty(), "The attack should be blocked by a friendly piece.");
     }
 
-    // board: https://lichess.org/editor/8/8/8/8/8/8/8/8_w_HAha_-_0_1?color=white
+    /// board: https://lichess.org/editor/8/8/8/8/8/8/8/8_w_HAha_-_0_1?color=white
     #[test]
     fn test_check_pieces_no_piece_at_location() {
         let mut board = Board::new();
@@ -378,4 +430,132 @@ mod tests {
         assert!(attack_locations.is_empty(), "No attacks should be detected if there is no piece.");
     }
 
+    /// board: https://lichess.org/editor/8/8/8/8/8/8/8/4K2R_w_KAha_-_0_1?color=white
+    #[test]
+    fn test_king_side_castling() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::E, Rank::One);
+        let rook_loc = Location::new(File::H, Rank::One);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        board[rook_loc] = Some(Piece::new(PieceType::Rook, Side::White));
+
+        let moves = KingMoveGen::generate_moves(&board, king_loc, Side::White);
+
+        let expected_castling_move = PieceMovementType::Castle(
+            Location::new(File::G, Rank::One),
+            Location::new(File::F, Rank::One),
+        );
+
+        assert!(moves.contains(&expected_castling_move), "Kingside castling should be a valid move.");
+    }
+
+    /// board: https://lichess.org/editor/8/8/8/8/8/8/8/R3K3_w_HQha_-_0_1?color=white
+    #[test]
+    fn test_queen_side_castling() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::E, Rank::One);
+        let rook_loc = Location::new(File::A, Rank::One);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        board[rook_loc] = Some(Piece::new(PieceType::Rook, Side::White));
+
+        let moves = KingMoveGen::generate_moves(&board, king_loc, Side::White);
+
+        let expected_castling_move = PieceMovementType::Castle(
+            Location::new(File::C, Rank::One),
+            Location::new(File::D, Rank::One),
+        );
+
+        assert!(moves.contains(&expected_castling_move), "Queenside castling should be a valid move.");
+    }
+
+    /// board: https://lichess.org/editor/8/8/8/8/8/8/8/4KB1R_w_KAha_-_0_1?color=white
+    #[test]
+    fn test_castling_blocked_by_piece() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::E, Rank::One);
+        let rook_loc = Location::new(File::H, Rank::One);
+        let blocking_piece_loc = Location::new(File::F, Rank::One);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        board[rook_loc] = Some(Piece::new(PieceType::Rook, Side::White));
+
+        board[blocking_piece_loc] = Some(Piece::new(PieceType::Bishop, Side::White));
+
+        let moves = KingMoveGen::generate_moves(&board, king_loc, Side::White);
+
+        let invalid_castling_move = PieceMovementType::Castle(
+            Location::new(File::G, Rank::One),
+            Location::new(File::F, Rank::One),
+        );
+
+        assert!(!moves.contains(&invalid_castling_move), "Kingside castling should not be allowed if there is a blocking piece.");
+    }
+
+    /// board: https://lichess.org/editor/4k2r/8/8/8/8/8/8/8_w_HAka_-_0_1?color=white
+    #[test]
+    fn test_black_king_side_castling() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::E, Rank::Eight);
+        let rook_loc = Location::new(File::H, Rank::Eight);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::Black));
+        board[rook_loc] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        let moves = KingMoveGen::generate_moves(&board, king_loc, Side::Black);
+
+        let expected_castling_move = PieceMovementType::Castle(
+            Location::new(File::G, Rank::Eight),
+            Location::new(File::F, Rank::Eight),
+        );
+
+        assert!(moves.contains(&expected_castling_move), "Black kingside castling should be a valid move.");
+    }
+
+    #[test]
+    fn test_castling_king_has_moved() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::E, Rank::One);
+        let rook_loc = Location::new(File::H, Rank::One);
+
+        board[king_loc] = Some(Piece {
+            piece_type: PieceType::King,
+            side: Side::White,
+            has_moved: true,
+        });
+        board[rook_loc] = Some(Piece::new(PieceType::Rook, Side::White));
+
+        let moves = KingMoveGen::generate_moves(&board, king_loc, Side::White);
+
+        let invalid_castling_move = PieceMovementType::Castle(
+            Location::new(File::G, Rank::One),
+            Location::new(File::F, Rank::One),
+        );
+
+        assert!(!moves.contains(&invalid_castling_move), "Castling should not be allowed if the king has moved.");
+    }
+
+    #[test]
+    fn test_castling_rook_has_moved() {
+        let mut board = Board::new();
+        let king_loc = Location::new(File::E, Rank::One);
+        let rook_loc = Location::new(File::H, Rank::One);
+
+        board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        board[rook_loc] = Some(Piece {
+            piece_type: PieceType::Rook,
+            side: Side::White,
+            has_moved: true,
+        });
+
+        let moves = KingMoveGen::generate_moves(&board, king_loc, Side::White);
+
+        let invalid_castling_move = PieceMovementType::Castle(
+            Location::new(File::G, Rank::One),
+            Location::new(File::F, Rank::One),
+        );
+
+        assert!(!moves.contains(&invalid_castling_move), "Castling should not be allowed if the rook has moved.");
+    }
 }

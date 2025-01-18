@@ -7,15 +7,17 @@ pub(crate) enum PieceMovementType {
     Relocate(Location),
     Capture(Location),
     Promotion(Location),
+    Castle(Location, Location)
 }
 
 impl PieceMovementType {
     /// Extracts the `Location` from the `PieceMovementType`.
-    pub fn location(&self) -> Location {
+    pub fn location(&self) -> Option<Location> {
         match self {
             PieceMovementType::Relocate(val)
             | PieceMovementType::Capture(val)
-            | PieceMovementType::Promotion(val) => val.clone(),
+            | PieceMovementType::Promotion(val) => Some(val.clone()),
+            PieceMovementType::Castle(loc1, loc2) => None
         }
     }
 }
@@ -59,4 +61,12 @@ pub(crate) trait MoveGenerator {
             .flat_map(|&(dx, dy)| Self::generate_moves_in_direction(board, loc, side, dx, dy))
             .collect()
     }
+
+    // fn moves_to_bitboard(moves: Vec<PieceMovementType>) -> u64 {
+    //     moves
+    //         .into_iter()
+    //         .fold(0u64, |bitboard, movement| {
+    //             bitboard | (1 << movement.location().to_bitboard_index())
+    //         })
+    // }
 }

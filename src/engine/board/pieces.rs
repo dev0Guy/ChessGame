@@ -27,11 +27,13 @@ pub struct Piece{
     pub piece_type: PieceType,
     /// The side the chess piece belongs to (e.g., White or Black).
     pub side: Side,
+    /// if from the start the piece moved
+    pub has_moved: bool,
 }
 
 impl Piece {
     /// Creates a new `Piece` with the specified type and 'Side'.
     pub(crate) const fn new(piece_type: PieceType, side: Side) -> Self {
-        Self{piece_type, side}
+        Self{piece_type, side, has_moved: false }
     }
 }

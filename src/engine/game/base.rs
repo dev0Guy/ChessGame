@@ -1,11 +1,13 @@
+use either::Either;
 use crate::engine::board::board::Board;
 use crate::engine::board::location::{File, Location, Rank};
 use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::game::{get_move_generator, user_actions};
 use crate::engine::gui::base::GUI;
-use crate::engine::move_generator::king::KingMoveGen;
 use strum::IntoEnumIterator;
+use crate::engine::game::threat::ThreadBoard;
 use crate::engine::game::user_actions::MoveAction;
+use crate::engine::move_generator::king::KingMoveGen;
 
 /// Initial chess positions of the white pieces.
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
@@ -33,7 +35,6 @@ fn reset_chess_board(board: &mut Board){
             board[location] = Some(piece);
         });
 }
-
 /// Returns the initial positions of chess pieces for the given player side.
 ///
 /// Where each cell is containing of [`Location`] and a [`Piece`]
@@ -134,7 +135,9 @@ pub struct Game<D: GUI<user_actions::Action>> {
     /// The side of player turn
     active: Side,
     /// Current king position by type
-    king_pos: [Location; 2]
+    king_pos: [Location; 2],
+    /// location under attack by side
+    threat: [ThreadBoard; 2]
 }
 
 
@@ -151,7 +154,8 @@ impl<D: GUI<user_actions::Action>> Game<D> {
             board: Board::new(),
             gui,
             active: Side::White,
-            king_pos: [Location::new(File::E, Rank::One), Location::new(File::E, Rank::Eight)]
+            king_pos: [Location::new(File::E, Rank::One), Location::new(File::E, Rank::Eight)],
+            threat: [ThreadBoard::new(), ThreadBoard::new()],
         }
     }
 
@@ -164,6 +168,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
         self.board = Board::new();
         update_king_position(&mut self.king_pos);
         reset_chess_board(&mut self.board);
+        self.threat.iter_mut().for_each(|b| b.reset());
     }
 
     /// Toggles the active side in the game.
@@ -193,10 +198,10 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// ## Returns
     /// - A `Iterator<Location>` containing all valid locations the piece can move to.
     fn get_moves_by_type(&self, p_type: PieceType, loc: Location, side: Side) -> impl Iterator<Item = Location>{
-        // TODO: replace, calculate in advance for each piece x-ray of action in position and validate by first and by all
-        get_move_generator(p_type)(&self.board, loc, side)
+         get_move_generator(p_type)(&self.board, loc, side)
             .into_iter()
             .map(|x| { x.location() })
+            .filter_map(|x| x)
     }
 
     /// Validates if a given move is legal in the current game state.
@@ -222,6 +227,22 @@ impl<D: GUI<user_actions::Action>> Game<D> {
         }
     }
 
+    fn update_threat_board_base_action(&mut self, action: &MoveAction) {
+        if let Some(piece) = self.board[action.from] {
+            self.get_moves_by_type(piece.piece_type, action.from, piece.side)
+                .for_each(|loc| {
+                    self.threat[piece.side as usize][loc] = false;
+                });
+        };
+        if let Some(mut piece) = self.board[action.to] {
+            self.get_moves_by_type(piece.piece_type, action.from, piece.side)
+                .for_each(|loc| {
+                    self.threat[piece.side as usize][loc] = true;
+                });
+        };
+
+    }
+
     /// Attempts to execute a move, ensuring it does not leave the king in check.
     ///
     /// This function validates and applies a move if it is legal. It ensures that the move does
@@ -242,14 +263,14 @@ impl<D: GUI<user_actions::Action>> Game<D> {
         if self.check_is_check_and_rollback(action) {
             return Err(format!("{:?} is invalid as it leaves the king in check.", action));
         }
-
         self.board.action(action);
-
-        if let Some(piece) = self.board[action.to] {
+        self.update_threat_board_base_action(action);
+        if let Some(mut piece) = self.board[action.to] {
             if piece.piece_type == PieceType::King {
                 self.king_pos[self.active as usize] = action.to;
             }
-        }
+            piece.has_moved = true;
+        };
 
         Self::switch_active_side(&mut self.active);
         Ok(())
@@ -264,10 +285,10 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// - `false` if the move does not leave the king in check.
     #[inline]
     fn check_is_check_and_rollback(&mut self, action: &MoveAction) -> bool {
-        // TODO optimize KingMoveGen::is_checked thus optimize all the other function fast
         let mut king_loc = self.king_pos[self.active as usize];
         let from_state = self.board[action.from].clone();
         let to_state = self.board[action.to].clone();
+        let mut threat_board = self.threat[self.active as usize].clone();
 
         if let Some(piece) = from_state {
             if piece.piece_type == PieceType::King {
@@ -275,13 +296,14 @@ impl<D: GUI<user_actions::Action>> Game<D> {
             }
         }
         self.board.action(action);
+        self.update_threat_board(&mut threat_board);
 
-        let is_checked = KingMoveGen::is_checked(&king_loc, &self.board);
+        let is_checked = threat_board[king_loc];
 
         self.board[action.from] = from_state;
         self.board[action.to] = to_state;
-
         is_checked
+
     }
 
     /// Checks if the game is over due to checkmate.
@@ -299,7 +321,9 @@ impl<D: GUI<user_actions::Action>> Game<D> {
                         return Some(
                             self.get_moves_by_type(piece.piece_type, loc, self.active)
                                 .into_iter()
-                                .map(move |next_loc| MoveAction { from: loc, to: next_loc }),
+                                .map(move |next_loc| {
+                                    MoveAction { from: loc, to: next_loc }
+                                }),
                         );
                     }
                 }
@@ -314,6 +338,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
             .then_some(false)
             .unwrap_or(true)
     }
+
 
     /// Handles the user's input action during the game loop.
     ///
@@ -331,10 +356,13 @@ impl<D: GUI<user_actions::Action>> Game<D> {
                     self.gui.render(&self.board, self.active, show_values);
                 }
             }
+            // user_actions::Action::Move(MoveAction::M)
             user_actions::Action::Move(move_action) if self.validate_move(&move_action)=> {
                 match self.try_move(&move_action) {
-                    Ok(_) => self.gui.render(&self.board, self.active, vec![]),
                     Err(_) => println!("action {:?} Invalid: cause a check", move_action),
+                    Ok(_) => {
+                        self.gui.render(&self.board, self.active, vec![])
+                    },
                 };
 
             }
@@ -357,6 +385,41 @@ impl<D: GUI<user_actions::Action>> Game<D> {
             let user_action: user_actions::Action = self.gui.wait_and_process_event();
             self.handle_user_action(user_action);
         }
+    }
+
+    fn update_threat(&mut self){
+        for side in 0..2 {
+            let mut threat_board = self.threat[side].clone();
+            self.update_threat_board(&mut threat_board);
+            self.threat[side] = threat_board;
+        }
+    }
+
+    fn get_all_piece_moves(&self) -> Vec<(Location, Vec<Location>)>{
+        File::iter()
+            .flat_map(|file| Rank::iter().map(move |rank| Location::new(file, rank))) // Generate all board locations
+            .filter_map(|loc| {
+                if let Some(piece) = self.board[loc] {
+                    if piece.side != self.active {
+                        Some((loc, self.get_moves_by_type(piece.piece_type, loc, piece.side).collect()))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn update_threat_board(&self, threat_board: &mut ThreadBoard){
+        let moves = self.get_all_piece_moves();
+
+        for (loc, move_list) in moves {
+            for threat_loc in move_list {
+                threat_board[threat_loc] = true;
+            }
+        };
     }
 }
 
@@ -464,8 +527,8 @@ mod tests {
         game.king_pos[Side::White as usize] = king_loc;
         game.active = Side::White;
 
+        game.update_threat();
         let action = MoveAction { from: start_loc, to: end_loc };
-
         let result = game.try_move(&action);
 
         assert!(matches!(result, Err(_)), "The move should be invalid because it leaves the king in check.");

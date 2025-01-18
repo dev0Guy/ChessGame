@@ -27,18 +27,18 @@ impl CommandPromptGUI{
 
     fn styled_symbol(cell: &Option<Piece>) -> StyledContent<&'static str> {
         match cell {
-            Some(Piece { piece_type: PieceType::King, side: Side::White }) => style("♔").with(Color::White),
-            Some(Piece { piece_type: PieceType::King, side: Side::Black }) => style("♚").with(Color::DarkGrey),
-            Some(Piece { piece_type: PieceType::Queen, side: Side::White }) => style("♕").with(Color::White),
-            Some(Piece { piece_type: PieceType::Queen, side: Side::Black }) => style("♛").with(Color::DarkGrey),
-            Some(Piece { piece_type: PieceType::Rook, side: Side::White }) => style("♖").with(Color::White),
-            Some(Piece { piece_type: PieceType::Rook, side: Side::Black }) => style("♜").with(Color::DarkGrey),
-            Some(Piece { piece_type: PieceType::Bishop, side: Side::White }) => style("♗").with(Color::White),
-            Some(Piece { piece_type: PieceType::Bishop, side: Side::Black }) => style("♝").with(Color::DarkGrey),
-            Some(Piece { piece_type: PieceType::Knight, side: Side::White }) => style("♘").with(Color::White),
-            Some(Piece { piece_type: PieceType::Knight, side: Side::Black }) => style("♞").with(Color::DarkGrey),
-            Some(Piece { piece_type: PieceType::Pawn, side: Side::White }) => style("♙").with(Color::White),
-            Some(Piece { piece_type: PieceType::Pawn, side: Side::Black }) => style("♟").with(Color::DarkGrey),
+            Some(Piece { piece_type: PieceType::King, side: Side::White , ..}) => style("♔").with(Color::White),
+            Some(Piece { piece_type: PieceType::King, side: Side::Black , .. }) => style("♚").with(Color::DarkGrey),
+            Some(Piece { piece_type: PieceType::Queen, side: Side::White , .. }) => style("♕").with(Color::White),
+            Some(Piece { piece_type: PieceType::Queen, side: Side::Black , .. }) => style("♛").with(Color::DarkGrey),
+            Some(Piece { piece_type: PieceType::Rook, side: Side::White , ..}) => style("♖").with(Color::White),
+            Some(Piece { piece_type: PieceType::Rook, side: Side::Black , ..}) => style("♜").with(Color::DarkGrey),
+            Some(Piece { piece_type: PieceType::Bishop, side: Side::White , .. }) => style("♗").with(Color::White),
+            Some(Piece { piece_type: PieceType::Bishop, side: Side::Black , .. }) => style("♝").with(Color::DarkGrey),
+            Some(Piece { piece_type: PieceType::Knight, side: Side::White , .. }) => style("♘").with(Color::White),
+            Some(Piece { piece_type: PieceType::Knight, side: Side::Black , .. }) => style("♞").with(Color::DarkGrey),
+            Some(Piece { piece_type: PieceType::Pawn, side: Side::White , .. }) => style("♙").with(Color::White),
+            Some(Piece { piece_type: PieceType::Pawn, side: Side::Black , .. }) => style("♟").with(Color::DarkGrey),
             None => style("□").with(Color::Grey),
         }
     }
