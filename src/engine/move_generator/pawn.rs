@@ -284,7 +284,6 @@ mod tests {
         let pawn = Piece::new(PieceType::Pawn, Side::White);
         board[loc] = Some(pawn);
 
-        // Place enemy pieces diagonally for capture
         let left_capture_loc = Location::new(File::D, Rank::Eight);
         let right_capture_loc = Location::new(File::F, Rank::Eight);
         board[left_capture_loc] = Some(Piece::new(PieceType::Pawn, Side::Black));
