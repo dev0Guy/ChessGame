@@ -163,6 +163,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     ///
     /// This method clears the board and places all the pieces in their starting positions
     /// for both white and black sides.
+    #[inline]
     fn reset_board(&mut self) {
         self.board = Board::new();
         update_king_position(&mut self.king_pos);
@@ -174,8 +175,9 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// This function switches the active player from `Side::White` to `Side::Black`
     /// or from `Side::Black` to `Side::White`. It is typically called at the end of
     /// a turn to alternate the active side.
-    fn switch_active_side(&mut self) {
-        self.active = match self.active {
+    #[inline]
+    fn switch_active_side(active: &mut Side) {
+        *active = match *active {
             Side::White => Side::Black,
             Side::Black => Side::White,
         };
@@ -265,7 +267,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
             return Err(format!("{:?} is in correct", action));
         }
         self.king_pos[self.active as usize] = action.to;
-        self.switch_active_side();
+        Self::switch_active_side(&mut self.active);
         Ok(())
     }
 
