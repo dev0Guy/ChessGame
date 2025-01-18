@@ -5,9 +5,12 @@ use crate::engine::game::{get_move_generator, user_actions};
 use crate::engine::gui::base::GUI;
 use crate::engine::move_generator::king::KingMoveGen;
 use std::fmt::Debug;
+use strum::IntoEnumIterator;
 use crate::engine::game::user_actions::MoveAction;
 use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 
+// TODO: duplicate code on check check and check checkmate and validate move.
+// TODO: Change to get all possible action and if none then checkmate else validate user pick is one of them
 /// Initial chess positions of the white pieces.
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
 
@@ -232,12 +235,11 @@ impl Game {
         let mut king_loc = self.king_pos[self.active as usize];
         let from_state = self.board[action.from].clone();
         let to_state = self.board[action.to].clone();
-        let is_king_moving = match from_state {
+        match from_state {
             Some(piece) if piece.piece_type == PieceType::King => {
                 king_loc = action.to;
-                true
             },
-            _ => false,
+            _ => {},
         };
         self.board.action(action);
         if KingMoveGen::is_checked(&king_loc, &self.board){
@@ -250,52 +252,61 @@ impl Game {
         Ok(())
     }
 
+    fn check_is_check_and_rollback(&mut self, action: &MoveAction) -> bool {
+        let mut king_loc = self.king_pos[self.active as usize];
+        let from_state = self.board[action.from].clone();
+        let to_state = self.board[action.to].clone();
+        match from_state {
+            Some(piece) if piece.piece_type == PieceType::King => {
+                king_loc = action.to;
+            },
+            _ => {},
+        };
+        self.board.action(action);
+        let is_checked = KingMoveGen::is_checked(&king_loc, &self.board);
+        self.board[action.from] = from_state;
+        self.board[action.to] = to_state;
+        is_checked
+    }
 
     /// Checks if the game is over due to checkmate.
     ///
     /// ## Returns
     /// - `true` if the active player is in checkmate.
     /// - `false` otherwise.
-    fn is_checkmate(&self) -> bool{
-        false
-        // let king_loc = self.king_pos[self.active as usize];
-        // if KingMoveGen::get_checked_pieces_location(&king_loc, &self.board).is_empty() {
-        //     return false;
-        // }
-        // let king_can_escape = KingMoveGen::generate_moves(&self.board, king_loc, self.active)
-        //     .into_iter()
-        //     .filter_map(|movement| {
-        //         if let PieceMovementType::Relocate(to) = movement {
-        //             Some(to)
-        //         } else {
-        //             None
-        //         }
-        //     })
-        //     .any(|to| {
-        //         self.simulate_move(king_loc, to, |board| {
-        //             KingMoveGen::get_checked_pieces_location(&to, board).is_empty()
-        //         })
-        //     });
-        // if king_can_escape {
-        //     return false;
-        // }
-        //
-        // self.board
-        //     .iter()
-        //     .filter_map(|(location, piece_option)| {
-        //         piece_option.filter(|piece| piece.side == self.active && piece.piece_type != PieceType::King)
-        //             .map(|piece| (location, piece))
-        //     })
-        //     .flat_map(|(location, piece)| {
-        //         self.get_moves_by_type(piece.piece_type, location, self.active)
-        //             .into_iter()
-        //             .map(move |to| (location, to))
-        //     })
-        //     .any(|(from, to)| {
-        //         self.simulate_move(from, to, |board| {
-        //             KingMoveGen::get_checked_pieces_location(&king_loc, board).is_empty()
-        //         })
-        //     })
+    fn is_checkmate(&mut self) -> bool {
+        let board_cell_location = File::iter()
+                .flat_map(|file| {
+                    Rank::iter()
+                        .filter_map(move |rank| {
+                        Some((file, rank))
+                    })
+                });
+        let my_piece_legal_moves_location = board_cell_location
+            .filter_map(|(file, rank)| {
+                let original_loc = Location::new(file, rank);
+                match self.board[original_loc] {
+                    Some(p) if p.side == self.active=> {
+                        let actions = self.get_moves_by_type(p.piece_type, original_loc, self.active)
+                            .into_iter()
+                            .map(|next_loc|{
+                                MoveAction { from: original_loc, to: next_loc }
+                            })
+                            .collect::<Vec<MoveAction>>();
+                        Some(actions)
+                    }
+                    _ => {None}
+                }
+            })
+            .flatten()
+            .collect::<Vec<MoveAction>>();
+        for action in my_piece_legal_moves_location.iter() {
+            if !self.check_is_check_and_rollback(action) {
+                return false;
+            }
+        }
+        true
+
     }
 
     /// Starts the chess game.
@@ -320,7 +331,7 @@ impl Game {
                     }
                 }
                 user_actions::Action::Move(move_action) if self.validate_move(&move_action)=> {
-                    self.try_move(&move_action);
+                    let _ = self.try_move(&move_action);
                     self.gui.render(&self.board, self.active, vec![]);
                 }
                 user_actions::Action::Move(move_action)  => {
@@ -545,6 +556,197 @@ mod tests {
         assert_eq!(game.king_pos[Side::White as usize], start_loc, "The king's position not should be updated.");
         assert_eq!(game.active, Side::White, "The active side should haven't switch after a invalid move.");
     }
+
+    // board: https://lichess.org/editor/4r3/8/8/8/8/8/8/4K3_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_checkmate_single_rock_false() {
+        let mut game = create_cmd_game();
+
+        // Place the white king
+        let king_loc = Location::new(File::E, Rank::One);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::E, Rank::Eight)] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(
+            !result,
+            "The king is not in checkmate but was incorrectly detected as checkmate."
+        );
+    }
+
+    // board: https://lichess.org/editor/4r3/8/8/8/8/8/8/4K3_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_checkmate_two_rock_false() {
+        let mut game = create_cmd_game();
+
+        // Place the white king
+        let king_loc = Location::new(File::E, Rank::One);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::E, Rank::Eight)] = Some(Piece::new(PieceType::Rook, Side::Black));
+        game.board[Location::new(File::A, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(
+            !result,
+            "The king is not in checkmate but was incorrectly detected as checkmate."
+        );
+    }
+
+    /// board: https://lichess.org/editor/4r3/8/8/8/8/8/8/r3K3_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_checkmate_false() {
+        let mut game = create_cmd_game();
+
+        let king_loc = Location::new(File::E, Rank::One);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::E, Rank::Eight)] = Some(Piece::new(PieceType::Rook, Side::Black));
+        game.board[Location::new(File::A, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(!result, "The king is in checkmate but was not detected.");
+    }
+
+    /// board: https://lichess.org/editor/8/8/8/8/8/8/8/Kq6_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_checkmate_one_piece_queen() {
+        let mut game = create_cmd_game();
+
+        let king_loc = Location::new(File::A, Rank::One);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::B, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(!result, "The king is in checkmate but was not detected.");
+    }
+
+    /// board: https://lichess.org/editor/8/8/8/8/8/8/7r/r3K3_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_checkmate_two_rocks() {
+        let mut game = create_cmd_game();
+
+        let king_loc = Location::new(File::E, Rank::Four);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::A, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+        game.board[Location::new(File::B, Rank::Two)] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(!result, "The king is in checkmate but was not detected.");
+    }
+
+    /// board:https://lichess.org/editor/8/8/b7/8/8/8/2pp4/3K3r_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_checkmate_bishop_blocked() {
+        let mut game = create_cmd_game();
+
+        let king_loc = Location::new(File::D, Rank::One);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::C, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::D, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::Black));
+        game.board[Location::new(File::A, Rank::Six)] = Some(Piece::new(PieceType::Bishop, Side::Black));
+        game.board[Location::new(File::H, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(!result, "The king is in checkmate but was not detected.");
+    }
+
+    /// board: https://lichess.org/editor/8/8/b7/8/8/8/2pp4/3K3r_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_not_checkmate_one_action_left() {
+        let mut game = create_cmd_game();
+
+        let king_loc = Location::new(File::D, Rank::One);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::D, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::Black));
+        game.board[Location::new(File::A, Rank::Six)] = Some(Piece::new(PieceType::Bishop, Side::Black));
+        game.board[Location::new(File::H, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(!result, "The king is not checkmate but was incorrectly detected as checkmate.");
+    }
+
+    /// board: https://lichess.org/editor/8/8/8/8/8/4n3/2PPP3/2nKP2r_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_not_check_mate_by_pawn_eat() {
+        let mut game = create_cmd_game();
+
+        let king_loc = Location::new(File::D, Rank::One);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::C, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::D, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::E, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::E, Rank::One)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::H, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+        game.board[Location::new(File::E, Rank::Three)] = Some(Piece::new(PieceType::Knight, Side::Black));
+        game.board[Location::new(File::C, Rank::One)] = Some(Piece::new(PieceType::Knight, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(!result, "The king is not checkmate but was incorrectly detected as checkmate.");
+    }
+
+    /// board: https://lichess.org/editor/8/8/8/8/8/4n3/2PPP3/2rKP2r_w_HAha_-_0_1?color=white
+    #[test]
+    fn test_not_check_mate_by_king_eat() {
+        let mut game = create_cmd_game();
+
+        let king_loc = Location::new(File::D, Rank::One);
+        game.board[king_loc] = Some(Piece::new(PieceType::King, Side::White));
+        game.king_pos[Side::White as usize] = king_loc;
+
+        game.board[Location::new(File::C, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::D, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::E, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::E, Rank::One)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        game.board[Location::new(File::H, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+        game.board[Location::new(File::E, Rank::Three)] = Some(Piece::new(PieceType::Knight, Side::Black));
+        game.board[Location::new(File::C, Rank::One)] = Some(Piece::new(PieceType::Rook, Side::Black));
+
+        game.active = Side::White;
+
+        let result = game.is_checkmate();
+
+        assert!(!result, "The king is not checkmate but was incorrectly detected as checkmate.");
+    }
+
 
 }
 

@@ -1,7 +1,7 @@
-use strum_macros::FromRepr;
+use strum_macros::{EnumIter, FromRepr};
 
 /// Represents the files (columns) on a chessboard.
-#[derive(FromRepr, Debug, Copy, Clone, PartialEq)]
+#[derive(FromRepr, Debug, Copy, Clone, PartialEq, EnumIter)]
 pub enum File {
     A,
     B,
@@ -14,7 +14,7 @@ pub enum File {
 }
 
 /// Represents the rank (rows) of a chessboard.
-#[derive(FromRepr, Debug, Copy, Clone, PartialEq)]
+#[derive(FromRepr, Debug, Copy, Clone, PartialEq, EnumIter)]
 pub enum Rank {
     One,
     Two,
