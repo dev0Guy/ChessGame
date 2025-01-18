@@ -292,38 +292,29 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// - `true` if the active player is in checkmate.
     /// - `false` otherwise.
     fn is_checkmate(&mut self) -> bool {
-        let board_cell_location = File::iter()
-                .flat_map(|file| {
-                    Rank::iter()
-                        .filter_map(move |rank| {
-                        Some((file, rank))
-                    })
-                });
-        let my_piece_legal_moves_location = board_cell_location
-            .filter_map(|(file, rank)| {
-                let original_loc = Location::new(file, rank);
-                match self.board[original_loc] {
-                    Some(p) if p.side == self.active=> {
-                        let actions = self.get_moves_by_type(p.piece_type, original_loc, self.active)
-                            .into_iter()
-                            .map(|next_loc|{
-                                MoveAction { from: original_loc, to: next_loc }
-                            })
-                            .collect::<Vec<MoveAction>>();
-                        Some(actions)
+        // TODO: optimize by recompute all of the position and only run bit check to validate if ok
+        let all_legal_moves_for_active_side: Vec<MoveAction> = File::iter()
+            .flat_map(|file| Rank::iter().map(move |rank| Location::new(file, rank))) // Generate all board locations
+            .filter_map(|loc| {
+                if let Some(piece) = self.board[loc] {
+                    if piece.side == self.active {
+                        return Some(
+                            self.get_moves_by_type(piece.piece_type, loc, self.active)
+                                .into_iter()
+                                .map(move |next_loc| MoveAction { from: loc, to: next_loc }),
+                        );
                     }
-                    _ => {None}
                 }
+                None
             })
             .flatten()
-            .collect::<Vec<MoveAction>>();
-        for action in my_piece_legal_moves_location.iter() {
-            if !self.check_is_check_and_rollback(action) {
-                return false;
-            }
-        }
-        true
+            .collect();
 
+        all_legal_moves_for_active_side
+            .into_iter()
+            .any(|action| !self.check_is_check_and_rollback(&action))
+            .then_some(false)
+            .unwrap_or(true)
     }
 
     /// Starts the chess game.
