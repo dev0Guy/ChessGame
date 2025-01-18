@@ -17,6 +17,27 @@ const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
 /// Initial chess positions of the black pieces.
 const BLACK_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::Black);
 
+/// The starting positions of the kings on a chessboard.
+const KINGS_START_POSITION: [Location; 2] = [Location::new(File::E, Rank::One), Location::new(File::E, Rank::Eight)];
+
+/// Updates the positions of both kings to their starting positions.
+#[inline]
+fn update_king_position(kings_pos: &mut [Location;2]){
+    kings_pos[0] = KINGS_START_POSITION[0];
+    kings_pos[1] = KINGS_START_POSITION[1];
+}
+
+/// Resets the chessboard to its initial state.
+#[inline]
+fn reset_chess_board(board: &mut Board){
+    WHITE_PIECES
+        .into_iter()
+        .chain(BLACK_PIECES.into_iter())
+        .for_each(|(location, piece)| {
+            board[location] = Some(piece);
+        });
+}
+
 /// Returns the initial positions of chess pieces for the given player side.
 ///
 /// Where each cell is containing of [`Location`] and a [`Piece`]
@@ -144,13 +165,8 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// for both white and black sides.
     fn reset_board(&mut self) {
         self.board = Board::new();
-        self.king_pos = [Location::new(File::E, Rank::One), Location::new(File::E, Rank::Eight)];
-        WHITE_PIECES
-            .into_iter()
-            .chain(BLACK_PIECES.into_iter())
-            .for_each(|(location, piece)| {
-                self.board[location] = Some(piece);
-            });
+        update_king_position(&mut self.king_pos);
+        reset_chess_board(&mut self.board);
     }
 
     /// Toggles the active side in the game.
