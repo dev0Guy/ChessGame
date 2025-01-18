@@ -4,10 +4,8 @@ use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::game::{get_move_generator, user_actions};
 use crate::engine::gui::base::GUI;
 use crate::engine::move_generator::king::KingMoveGen;
-use std::fmt::Debug;
 use strum::IntoEnumIterator;
 use crate::engine::game::user_actions::MoveAction;
-use crate::engine::move_generator::base::{MoveGenerator};
 
 /// Initial chess positions of the white pieces.
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);

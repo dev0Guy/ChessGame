@@ -1,8 +1,7 @@
-use std::collections::hash_map::Values;
 use strum::IntoEnumIterator;
 use crate::engine::board::board;
 use crate::engine::board::location::Location;
-use crate::engine::board::pieces::{Piece, PieceType, Side};
+use crate::engine::board::pieces::{PieceType, Side};
 use crate::engine::game::get_move_generator;
 use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 

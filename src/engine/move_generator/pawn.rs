@@ -1,6 +1,6 @@
 use crate::engine::board::board;
 use crate::engine::board::location::{Location, Rank};
-use crate::engine::board::pieces::{Piece, Side};
+use crate::engine::board::pieces::{Side};
 use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 
 /// A move generator for pawn pieces in chess.

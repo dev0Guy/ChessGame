@@ -1,4 +1,3 @@
-use crate::engine::board::board;
 use crate::engine::board::location::Location;
 
 #[derive(Debug)]

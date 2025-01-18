@@ -1,7 +1,6 @@
 mod engine;
 use engine::game::base::Game;
-use engine::gui::{cmd::CommandPromptGUI, base::GUI};
-use engine::game::user_actions;
+use engine::gui::{cmd::CommandPromptGUI};
 
 // TODO:
 // [V] Document every thing

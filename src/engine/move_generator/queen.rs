@@ -1,9 +1,6 @@
 use crate::engine::board::board;
-use crate::engine::board::location::{File, Location, Rank};
-use std::cmp::{Eq, PartialEq};
-use std::hash::Hash;
-use crate::engine::board::board::Board;
-use crate::engine::board::pieces::{Piece, PieceType, Side};
+use crate::engine::board::location::{Location};
+use crate::engine::board::pieces::{Side};
 use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
 
 const QUEEN_POSSIBLE_DIRECTIONS: [(i8, i8); 8] = [
@@ -36,9 +33,9 @@ impl MoveGenerator for QueenMoveGen {
 }
 
 
+#[warn(unused_variables)]
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use super::*;
     use crate::engine::board::board::Board;
     use crate::engine::board::location::{File, Location, Rank};
