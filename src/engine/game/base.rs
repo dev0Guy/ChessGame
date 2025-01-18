@@ -9,8 +9,6 @@ use strum::IntoEnumIterator;
 use crate::engine::game::user_actions::MoveAction;
 use crate::engine::move_generator::base::{MoveGenerator};
 
-// TODO: duplicate code on check check and check checkmate and validate move.
-// TODO: Change to get all possible action and if none then checkmate else validate user pick is one of them
 /// Initial chess positions of the white pieces.
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
 
@@ -268,6 +266,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// - `false` if the move does not leave the king in check.
     #[inline]
     fn check_is_check_and_rollback(&mut self, action: &MoveAction) -> bool {
+        // TODO optimize KingMoveGen::is_checked thus optimize all the other function fast
         let mut king_loc = self.king_pos[self.active as usize];
         let from_state = self.board[action.from].clone();
         let to_state = self.board[action.to].clone();
