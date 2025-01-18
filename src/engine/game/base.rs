@@ -196,11 +196,10 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     ///
     /// ## Returns
     /// - A `Vec<Location>` containing all valid locations the piece can move to.
-    fn get_moves_by_type(&self, p_type: PieceType, loc: Location, side: Side) -> Vec<Location>{
+    fn get_moves_by_type(&self, p_type: PieceType, loc: Location, side: Side) -> impl Iterator<Item = Location>{
         get_move_generator(p_type)(&self.board, loc, side)
             .into_iter()
             .map(|x| { x.location() })
-            .collect::<Vec<Location>>()
     }
 
 
@@ -220,7 +219,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
         match self.board[action.from] {
             Some(piece) if piece.side == self.active => {
                 self.get_moves_by_type(piece.piece_type, action.from, piece.side)
-                    .contains(&action.to)
+                    .any(|loc| loc == action.to)
             }
             _ => false
         }
