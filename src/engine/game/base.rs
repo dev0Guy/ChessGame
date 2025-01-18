@@ -231,9 +231,9 @@ impl Game {
                 user_actions::Action::OfferDraw => todo!(),
                 user_actions::Action::Resign => todo!(),
                 user_actions::Action::AcceptDraw => todo!(),
-                user_actions::Action::ShowMoveOption(x) if self.board[x].is_some() => {
+                user_actions::Action::ShowMoveOption(x) => {
                     match self.board[x] {
-                        Some(piece) => if self.active == piece.side{
+                        Some(piece) => {//if self.active == piece.side
                             let show_values = self.get_moves_by_type(
                                 piece.piece_type,
                                 x,
@@ -243,8 +243,6 @@ impl Game {
                         }
                         _ => continue,
                     }
-                    let show_values = self.get_moves_by_type(self.board[x].unwrap().piece_type, x, self.active);
-                    self.gui.render(&self.board, self.active, show_values);
                 }
                 user_actions::Action::Move(move_action) if self.validate_move(&move_action) => {
                     self.board.action(move_action);
