@@ -202,7 +202,6 @@ impl<D: GUI<user_actions::Action>> Game<D> {
             .map(|x| { x.location() })
     }
 
-
     /// Validates if a given move is legal in the current game state.
     ///
     /// This function checks whether the move specified by the `MoveAction` is valid:
@@ -344,7 +343,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
                 user_actions::Action::AcceptDraw => todo!(),
                 user_actions::Action::ShowMoveOption(x) => {
                     if let Some(piece) = self.board[x] {
-                        let show_values = self.get_moves_by_type(piece.piece_type, x, piece.side);
+                        let show_values = self.get_moves_by_type(piece.piece_type, x, piece.side).collect();
                         self.gui.render(&self.board, self.active, show_values);
                     }
                 }

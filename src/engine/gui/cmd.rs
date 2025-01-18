@@ -79,7 +79,7 @@ impl CommandPromptGUI{
 }
 
 impl GUI<user_actions::Action> for CommandPromptGUI{
-    fn render(&mut self, board: &Board, active_side: Side, show: Vec<Location>) {
+    fn render(&mut self, board: &Board, active_side: Side, show_loc: Vec<Location>) {
         writeln!(self.writer, "{}", FILE_NAMES_ROW).unwrap();
         for (rank, row) in board.iter().enumerate() {
             write!(self.writer, "{}|", 8 - rank).unwrap();
@@ -87,7 +87,7 @@ impl GUI<user_actions::Action> for CommandPromptGUI{
                 let mut styled = Self::styled_symbol(cell);
                 let file = File::from_repr(file).unwrap();
                 let rank = Rank::from_repr(7 - rank).unwrap();
-                if show.contains(&Location::new( file, rank )){
+                if show_loc.contains(&Location::new( file, rank )){
                     styled = styled.with(Color::Green)
                 }
                 write!(self.writer, " {}", styled).unwrap();
