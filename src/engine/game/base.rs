@@ -6,6 +6,7 @@ use crate::engine::gui::base::GUI;
 use crate::engine::move_generator::king::KingMoveGen;
 use std::fmt::Debug;
 use crate::engine::game::user_actions::MoveAction;
+use crate::engine::move_generator::base::MoveGenerator;
 
 /// Initial chess positions of the white pieces.
 const WHITE_PIECES: [(Location, Piece); 16] = get_location_by_side(Side::White);
@@ -193,8 +194,14 @@ impl Game {
     /// ## Returns
     /// - `false` if the move is invalid (e.g., no piece at the `from` location, the piece
     ///   does not belong to the active side, or the target location is not valid).
-    fn validate_move(&self, action: &user_actions::MoveAction) -> bool {
-        matches!(self.board[action.from], Some(piece) if piece.side == self.active)
+    fn validate_move(&self, action: &MoveAction) -> bool {
+        match self.board[action.from] {
+            Some(piece) if piece.side == self.active => {
+                self.get_moves_by_type(piece.piece_type, action.from, piece.side)
+                    .contains(&action.to)
+            }
+            _ => false
+        }
     }
 
     fn update_king_position_if_king_position_change(&mut self, move_action: &user_actions::MoveAction){
@@ -244,6 +251,18 @@ impl Game {
         }
     }
 
+    fn is_checked_mate(&self) -> bool{
+        // let king_loc = self.king_pos[self.active as usize];
+        // KingMoveGen::generate_moves(&self.board, king_loc.clone(), self.active)
+        //     .iter()
+        //     .filter()
+        // for action in KingMoveGen::generate_moves(&self.board, king_loc.clone(), self.active){
+        //
+        // }
+        // KingMoveGen::is_checked(&king_loc, &self.board)
+        true
+    }
+
     /// Starts the chess game.
     ///
     /// This method resets the board to its initial state and enters the main game loop,
@@ -260,25 +279,19 @@ impl Game {
                 user_actions::Action::Resign => todo!(),
                 user_actions::Action::AcceptDraw => todo!(),
                 user_actions::Action::ShowMoveOption(x) => {
-                    match self.board[x] {
-                        Some(piece) => {
-                            let show_values = self.get_moves_by_type(
-                                piece.piece_type,
-                                x,
-                                piece.side
-                            );
-                            self.gui.render(&self.board, self.active, show_values);
-                        }
-                        _ => continue,
+                    if let Some(piece) = self.board[x] {
+                        let show_values = self.get_moves_by_type(piece.piece_type, x, piece.side);
+                        self.gui.render(&self.board, self.active, show_values);
                     }
                 }
-                user_actions::Action::Move(move_action) if self.validate_move(&move_action) => {
+                user_actions::Action::Move(move_action) if self.validate_move(&move_action)=> {
                     self.execute_move(move_action);
                     self.gui.render(&self.board, self.active, vec![]);
                 }
-                action => {
-                    println!("{:?} is in correct", action);
-                }
+                user_actions::Action::Move(move_action)  => {
+                    println!("{:?} is in correct", move_action);
+                },
+
             };
         }
     }
@@ -464,11 +477,11 @@ mod tests {
 
         let result = game.execute_move(action);
 
-        assert!(!result, "The king's move should be valid and executed.");
-        assert!(game.board[end_loc].is_none(), "The king should haven't moved to the target location.");
-        assert!(game.board[start_loc].is_some(), "King should stayed in the starting location.");
+        assert!(result, "The king's move should be valid and executed.");
+        assert!(game.board[end_loc].is_some(), "The king should have moved to the target location.");
+        assert!(game.board[start_loc].is_none(), "King shouldn't stayed in the starting location.");
         assert_eq!(game.king_pos[Side::White as usize], end_loc, "The king's position should be updated.");
-        assert_eq!(game.active, Side::White, "The active side should haven't switch after a invalid move.");
+        assert_eq!(game.active, Side::Black, "The active side should haven't switch after a invalid move.");
     }
 
     /// from: https://lichess.org/editor/5r2/8/8/8/8/8/5B2/5K2_w_HAha_-_0_1?color=white

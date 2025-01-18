@@ -6,12 +6,12 @@ use engine::game::user_actions;
 // TODO:
 // [V] Document every thing
 // [V] Create Tests
-// [ ] Show in console all of the possible moves
-// [ ] Add King
-// [ ] Add knight moves
-// [ ] Pin Piece
+// [V] Show in console all of the possible moves
+// [V] Add King
+// [V] Add knight moves
+// [V] Pin Piece
 // [ ] Castle
-// [ ] Add validation action for each piece
+// [V] Add validation action for each piece
 // [ ] Add memory for each piece on each location all possible moves
 // [ ] Combine precalculate with validate function
 
