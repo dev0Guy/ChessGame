@@ -233,7 +233,7 @@ impl Game {
                 user_actions::Action::AcceptDraw => todo!(),
                 user_actions::Action::ShowMoveOption(x) => {
                     match self.board[x] {
-                        Some(piece) => {//if self.active == piece.side
+                        Some(piece) => {
                             let show_values = self.get_moves_by_type(
                                 piece.piece_type,
                                 x,
