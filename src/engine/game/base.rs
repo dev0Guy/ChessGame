@@ -7,7 +7,7 @@ use crate::engine::move_generator::king::KingMoveGen;
 use std::fmt::Debug;
 use strum::IntoEnumIterator;
 use crate::engine::game::user_actions::MoveAction;
-use crate::engine::move_generator::base::{MoveGenerator, PieceMovementType};
+use crate::engine::move_generator::base::{MoveGenerator};
 
 // TODO: duplicate code on check check and check checkmate and validate move.
 // TODO: Change to get all possible action and if none then checkmate else validate user pick is one of them
@@ -109,18 +109,19 @@ const fn get_location_by_side(side: Side) -> [(Location, Piece); 16] {
 ///
 /// The `Game` struct is responsible for managing the chessboard, interacting
 /// with the graphical user interface (GUI), and processing user actions.
-pub struct Game {
+pub struct Game<D: GUI<user_actions::Action>> {
     /// The chessboard representing the current state of the game.
     board: Board,
     /// The graphical user interface used for rendering the board and handling user input.
-    gui: Box<dyn GUI<user_actions::Action>>,
+    gui: D,
     /// The side of player turn
     active: Side,
     /// Current king position by type
     king_pos: [Location; 2]
 }
 
-impl Game {
+
+impl<D: GUI<user_actions::Action>> Game<D> {
     /// Creates a new `Game` instance.
     ///
     /// ## Parameters
@@ -128,7 +129,7 @@ impl Game {
     ///
     /// ## Returns
     /// - A boxed `Game` instance
-    pub fn new(gui: Box<dyn GUI<user_actions::Action>>) -> Self {
+    pub fn new(gui: D) -> Self {
         Self {
             board: Board::new(),
             gui,
@@ -351,8 +352,8 @@ mod tests {
     use crate::engine::game::user_actions::MoveAction;
     use crate::engine::gui::cmd::CommandPromptGUI;
 
-    fn create_cmd_game() -> Game{
-        let gui: Box<dyn GUI<user_actions::Action>> = Box::new(CommandPromptGUI::new());
+    fn create_cmd_game() -> Game<CommandPromptGUI>{
+        let gui=  CommandPromptGUI::new();
         Game::new(gui)
     }
 
@@ -749,5 +750,3 @@ mod tests {
 
 
 }
-
-

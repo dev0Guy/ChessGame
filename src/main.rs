@@ -17,7 +17,7 @@ use engine::game::user_actions;
 
 
 fn main() {
-    let gui: Box<dyn GUI<user_actions::Action>> = Box::new(CommandPromptGUI::new());
-    let mut game: Game = Game::new(gui);
+    let gui= CommandPromptGUI::new();
+    let mut game = Game::new(gui);
     game.start();
 }
