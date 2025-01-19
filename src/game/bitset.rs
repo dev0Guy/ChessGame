@@ -1,8 +1,8 @@
-use std::ops;
+use std::{fmt, ops};
 use crate::game::position::Position;
 
 /// Representation of a bitboard for efficient chessboard operations.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Default)]
 pub struct BoardBitSet(u64);
 
 impl BoardBitSet{
@@ -22,10 +22,12 @@ impl BoardBitSet{
         Self::new(1 << Position::position_bitboard_index(&pos))
     }
 
-    pub fn place_multiple_at<T: IntoIterator<Item = Position>>(&mut self, positions: T) {
+    pub fn place_multiple_at<T: IntoIterator<Item = Position>>(positions: T) -> Self {
+        let mut s = Self::empty();
         positions.into_iter().for_each(|pos| {
-            self.0 |= 1 << Position::position_bitboard_index(&pos);
+            s.0 |= 1 << Position::position_bitboard_index(&pos);
         });
+        s
     }
 
     /// Returns `true` if the bit at `pos` is 1, `false` otherwise.
@@ -77,6 +79,26 @@ impl ops::BitXorAssign for BoardBitSet {
     }
 }
 
+impl fmt::Debug for BoardBitSet{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Chessboard visualization (LSB is a1):")?;
+        for rank in (0..8).rev() {
+            write!(f, "{} ", rank + 1)?;
+            for file in 0..8 {
+                let square_index = rank * 8 + file;
+                let mask = 1u64 << square_index;
+                if self.0 & mask != 0 {
+                    write!(f, "X ")?;
+                } else {
+                    write!(f, ". ")?;
+                }
+            }
+            writeln!(f)?;
+        }
+        writeln!(f, "  a b c d e f g h")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,8 +139,7 @@ mod tests {
             Position::new(File::C, Rank::Three),
         ];
 
-        let mut bitset = BoardBitSet::empty();
-        bitset.place_multiple_at(positions.clone());
+        let bitset = BoardBitSet::place_multiple_at(positions.clone());
 
         for pos in positions {
             assert!(bitset.is_set(pos));
@@ -135,8 +156,7 @@ mod tests {
             Position::new(File::H, Rank::Eight),
         ];
 
-        let mut bitset = BoardBitSet::empty();
-        bitset.place_multiple_at(positions.clone());
+        let bitset = BoardBitSet::place_multiple_at(positions.clone());
 
         let expected_bitmask = (1 << 0) | (1 << 63);
         assert_eq!(bitset.0, expected_bitmask);

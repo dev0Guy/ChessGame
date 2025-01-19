@@ -10,19 +10,19 @@ pub(crate) enum Rank {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Position {
-    pub file: File,
     pub rank: Rank,
+    pub file: File,
 }
 
 impl Position {
     /// Creates a new `Position` from `File` and `Rank`.
     pub fn new(file: File, rank: Rank) -> Self {
-        Self { file, rank }
+        Self { rank, file }
     }
 
     /// Iterates over all positions on the board.
     pub fn iter() -> impl Iterator<Item = Position> {
-        File::iter().flat_map(|file| Rank::iter().map(move |rank| Position { file, rank }))
+        File::iter().flat_map(|file| Rank::iter().map(move |rank| Position { rank, file }))
     }
 
     pub fn position_bitboard_index(&self) -> usize{
@@ -96,6 +96,28 @@ impl From<Rank> for usize {
         match rank {
             Rank::One => 0, Rank::Two => 1, Rank::Three => 2, Rank::Four => 3,
             Rank::Five => 4, Rank::Six => 5, Rank::Seven => 6, Rank::Eight => 7,
+        }
+    }
+}
+
+impl File {
+    pub fn offset(self, offset: i8) -> Option<File> {
+        let current_index = self as i8;
+        let new_index = current_index + offset;
+        match new_index {
+            0..=7 => Some( File::from(new_index as usize) ),
+            _ => None,
+        }
+    }
+}
+
+impl Rank {
+    pub fn offset(self, offset: i8) -> Option<Rank> {
+        let current_index = self as i8;
+        let new_index = current_index + offset;
+        match new_index {
+            0..=7 => Some( Rank::from(new_index as usize) ),
+            _ => None,
         }
     }
 }
