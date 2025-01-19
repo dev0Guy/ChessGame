@@ -1,7 +1,7 @@
 use std::ops::{Index, IndexMut};
 use strum::IntoEnumIterator;
 use crate::engine::board::location::{File, Location, Rank};
-use crate::engine::board::pieces::{Piece};
+use crate::engine::board::pieces::{Piece, PieceType, Side};
 use crate::engine::game::user_actions::MoveAction;
 
 const FILE_NAMES: &'static str = "   A B C D E F G H";
@@ -75,19 +75,41 @@ impl Board {
     pub fn to_bitboards(&self) -> [[u64; 6]; 2] {
         let mut bitboards = [[0u64; 6]; 2];
 
-        for rank in Rank::iter() {
-            for file in File::iter() {
-                let file = file as usize;
-                let rank = rank as usize;
-                if let Some(piece) = self.0[rank][file] {
-                    let bit_index = (rank) * 8 + (file);
-                    let color_index = piece.side as usize;
-                    let piece_index = piece.piece_type as usize;
-                    bitboards[color_index][piece_index] |= 1 << bit_index;
+        for (rank, row) in self.0.iter().enumerate() {
+            for (file, piece) in row.iter().enumerate() {
+                if let Some(piece) = piece {
+                    let bit_index = rank * 8 + file;
+                    bitboards[piece.side as usize][piece.piece_type as usize] |= 1 << bit_index;
                 }
             }
         }
 
         bitboards
+    }
+
+    pub fn from_bitboards(bitboards: [[u64; 6]; 2]) -> Self {
+        let mut board = [[None; 8]; 8];
+
+        for (side_index, pieces) in bitboards.iter().enumerate() {
+            for (piece_type_index, &bitboard) in pieces.iter().enumerate() {
+                let mut bitboard = bitboard;
+                while bitboard != 0 {
+                    let bit_index = bitboard.trailing_zeros() as usize;
+                    let rank = bit_index / 8;
+                    let file = bit_index % 8;
+
+                    board[rank][file] = Some(
+                        Piece::new(
+                            PieceType::from_repr(piece_type_index).unwrap(),
+                            Side::from_repr(side_index).unwrap()
+                        )
+                    );
+                    // Clear the least significant bit
+                    bitboard &= bitboard - 1;
+                }
+            }
+        }
+
+        Self(board)
     }
 }

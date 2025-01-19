@@ -39,12 +39,30 @@ pub(crate) struct Location {
     pub rank: Rank,
 }
 
+impl Location {
+    /// Converts a `Location` to its corresponding bitboard index (0–63).
+    pub fn to_bit_index(&self) -> u64 {
+        (self.rank as u64) * 8 + (self.file as u64)
+    }
+
+    /// Converts a bitboard index (0–63) back to a `Location`.
+    pub fn from_bit_index(bit_index: usize) -> Self {
+        let rank = bit_index / 8; // Divide by 8 to get the rank
+        let file = bit_index % 8; // Modulo 8 to get the file
+        Self::new(File::from_repr(file).unwrap(), Rank::from_repr(rank).unwrap())
+    }
+}
+
 impl File {
 
     /// Converts a character representing a rank (e.g., 'A', 'B', 'C', 'D') into a [`File`] enum.
     fn from_char(c: char) -> Option<Self> {
         let index = (c.to_ascii_lowercase() as u8).checked_sub(b'a')? as usize;
         Self::from_repr(index)
+    }
+
+    fn index(file: &File) -> usize{
+        *file as usize
     }
 }
 
@@ -53,6 +71,10 @@ impl Rank {
     /// Converts a character representing a rank (e.g., '1', '2') into a [`Rank`] enum.
     fn from_char(c: char) -> Option<Self> {
        Self::from_repr((c.to_digit(10).unwrap() as usize) - 1)
+    }
+
+    fn index(rank: &Rank) -> usize{
+        *rank as usize
     }
 }
 
@@ -112,9 +134,5 @@ impl Location {
             },
             _ => Err(())
         }
-    }
-
-    pub(crate) fn to_bitboard_index(&self) -> usize{
-        (self.rank as usize) * 8 + (self.file as usize)
     }
 }

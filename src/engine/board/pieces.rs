@@ -1,12 +1,12 @@
-use strum_macros::EnumIter;
+use strum_macros::{EnumIter, FromRepr};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, FromRepr)]
 pub enum Side{
     White,
     Black,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumIter, FromRepr)]
 pub enum PieceType{
     Pawn,
     Rook,

@@ -27,6 +27,10 @@ impl MoveGenerator for BishopMoveGen {
     fn generate_moves(board: &board::Board, loc: Location, side: Side) -> Vec<PieceMovementType> {
         Self::generate_sliding_moves(board, loc, side, &BISHOP_POSSIBLE_DIRECTIONS)
     }
+
+    fn generate_moves_bitboard(board: &board::Board, loc: Location, side: Side) -> u64 {
+        Self::generate_sliding_moves_bitboard(board, loc, side, &BISHOP_POSSIBLE_DIRECTIONS)
+    }
 }
 
 
@@ -143,4 +147,99 @@ mod tests {
         assert_eq!(moves.len(), 0);
     }
 
+    #[test]
+    fn test_bishop_moves_empty_board_bitboard() {
+        let mut board = Board::new();
+        let loc = Location::new(File::C, Rank::Three);
+        board[loc] = Some(Piece::new(PieceType::Bishop, Side::White));
+
+        let bitboard = BishopMoveGen::generate_moves_bitboard(&board, loc, Side::White);
+
+        let expected_locations = [
+            Location::new(File::A, Rank::One),
+            Location::new(File::B, Rank::Two),
+            Location::new(File::D, Rank::Four),
+            Location::new(File::E, Rank::Five),
+            Location::new(File::F, Rank::Six),
+            Location::new(File::G, Rank::Seven),
+            Location::new(File::H, Rank::Eight),
+            Location::new(File::A, Rank::Five),
+            Location::new(File::B, Rank::Four),
+            Location::new(File::D, Rank::Two),
+            Location::new(File::E, Rank::One),
+        ];
+
+        let expected_bitboard = expected_locations
+            .iter()
+            .fold(0u64, |bb, loc| bb | (1 << loc.to_bit_index()));
+
+        assert_eq!(bitboard, expected_bitboard);
+    }
+
+    #[test]
+    fn test_bishop_moves_with_obstacles_bitboard() {
+        let mut board = Board::new();
+        let loc = Location::new(File::C, Rank::Three);
+        board[loc] = Some(Piece::new(PieceType::Bishop, Side::White));
+
+        // Add blocking pieces
+        board[Location::new(File::B, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::Black));
+        board[Location::new(File::E, Rank::Five)] = Some(Piece::new(PieceType::Pawn, Side::White));
+
+        let bitboard = BishopMoveGen::generate_moves_bitboard(&board, loc, Side::White);
+
+        let expected_locations = [
+            Location::new(File::A, Rank::One),
+            Location::new(File::B, Rank::Two), // Capture
+            Location::new(File::D, Rank::Four),
+        ];
+
+        let expected_bitboard = expected_locations
+            .iter()
+            .fold(0u64, |bb, loc| bb | (1 << loc.to_bit_index()));
+
+        assert_eq!(bitboard, expected_bitboard);
+    }
+
+    #[test]
+    fn test_bishop_moves_with_full_block_bitboard() {
+        let mut board = Board::new();
+        let loc = Location::new(File::C, Rank::Three);
+        board[loc] = Some(Piece::new(PieceType::Bishop, Side::White));
+
+        // Add blocking pieces all around
+        board[Location::new(File::B, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        board[Location::new(File::D, Rank::Four)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        board[Location::new(File::B, Rank::Four)] = Some(Piece::new(PieceType::Pawn, Side::White));
+        board[Location::new(File::D, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::White));
+
+        let bitboard = BishopMoveGen::generate_moves_bitboard(&board, loc, Side::White);
+
+        assert_eq!(bitboard, 0);
+    }
+
+    #[test]
+    fn test_bishop_moves_with_captures_bitboard() {
+        let mut board = Board::new();
+        let loc = Location::new(File::C, Rank::Three);
+        board[loc] = Some(Piece::new(PieceType::Bishop, Side::White));
+
+        // Add capturable pieces
+        board[Location::new(File::B, Rank::Two)] = Some(Piece::new(PieceType::Pawn, Side::Black));
+        board[Location::new(File::D, Rank::Four)] = Some(Piece::new(PieceType::Pawn, Side::Black));
+
+        let bitboard = BishopMoveGen::generate_moves_bitboard(&board, loc, Side::White);
+
+        let expected_locations = [
+            Location::new(File::A, Rank::One),
+            Location::new(File::B, Rank::Two), // Capture
+            Location::new(File::D, Rank::Four), // Capture
+        ];
+
+        let expected_bitboard = expected_locations
+            .iter()
+            .fold(0u64, |bb, loc| bb | (1 << loc.to_bit_index()));
+
+        assert_eq!(bitboard, expected_bitboard);
+    }
 }

@@ -13,7 +13,6 @@ use crate::engine::move_generator::rock::RookMoveGen;
 pub mod base;
 pub mod user_actions;
 pub(crate) mod threat;
-
 type MoveGeneratorFn = fn(&board::Board, Location, Side) -> Vec<PieceMovementType>;
 
 pub(crate) fn get_move_generator(piece_type: PieceType) -> MoveGeneratorFn {

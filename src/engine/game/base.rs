@@ -198,7 +198,7 @@ impl<D: GUI<user_actions::Action>> Game<D> {
     /// ## Returns
     /// - A `Iterator<Location>` containing all valid locations the piece can move to.
     fn get_moves_by_type(&self, p_type: PieceType, loc: Location, side: Side) -> impl Iterator<Item = Location>{
-         get_move_generator(p_type)(&self.board, loc, side)
+        get_move_generator(p_type)(&self.board, loc, side)
             .into_iter()
             .map(|x| { x.location() })
             .filter_map(|x| x)

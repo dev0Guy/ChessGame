@@ -1,4 +1,6 @@
 mod engine;
+mod game;
+
 use engine::game::base::Game;
 use engine::gui::{cmd::CommandPromptGUI};
 
