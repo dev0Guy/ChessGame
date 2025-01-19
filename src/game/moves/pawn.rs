@@ -24,7 +24,7 @@ impl RegularMoveOptions for PawnMoves {
 }
 
 impl AttackMoveOptions for PawnMoves {
-    fn attack_option(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_ {
+    fn attack_options(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_ {
         let diagonals = match side {
             Side::White => vec![(1, 1), (-1, 1)],
             Side::Black => vec![(1, -1), (-1, -1)],
@@ -106,7 +106,7 @@ mod tests {
             .into_iter()
             .collect();
 
-        let result: HashSet<_> = PawnMoves::attack_option(&pos, Side::White).collect();
+        let result: HashSet<_> = PawnMoves::attack_options(&pos, Side::White).collect();
         assert_eq!(result, expected);
     }
 
@@ -121,7 +121,7 @@ mod tests {
             .into_iter()
             .collect();
 
-        let result: HashSet<_> = PawnMoves::attack_option(&pos, Side::Black).collect();
+        let result: HashSet<_> = PawnMoves::attack_options(&pos, Side::Black).collect();
         assert_eq!(result, expected);
     }
 }

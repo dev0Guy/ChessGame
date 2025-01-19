@@ -8,7 +8,7 @@ pub struct DiagonalMovement;
 pub struct AntiDiagonalMovement;
 
 pub(crate) trait AttackMoveOptions {
-    fn attack_option(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_;
+    fn attack_options(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_;
 }
 
 pub(crate) trait RegularMoveOptions {

@@ -2,9 +2,9 @@ use crate::engine::board::pieces::Side;
 use super::common::{HorizontalMovement, VerticalMovement, AttackMoveOptions, RegularMoveOptions};
 use crate::game::Position;
 
-pub struct RockMovement;
+pub struct RockMoves;
 
-impl RegularMoveOptions for RockMovement {
+impl RegularMoveOptions for RockMoves {
     // Return x-ray of all possible movement (on empty board)
     fn move_options(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_ {
         HorizontalMovement::move_options(pos, side)
@@ -12,9 +12,9 @@ impl RegularMoveOptions for RockMovement {
     }
 }
 
-impl AttackMoveOptions for RockMovement {
+impl AttackMoveOptions for RockMoves {
     // Return x-ray of all possible movement (on empty board)
-    fn attack_option(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_ {
+    fn attack_options(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_ {
         Self::move_options(pos, side)
     }
 }
@@ -47,7 +47,7 @@ mod tests {
             Position::new(File::D, Rank::Eight),
         ];
 
-        let result: Vec<_> = RockMovement::move_options(&pos, Side::White).collect();
+        let result: Vec<_> = RockMoves::move_options(&pos, Side::White).collect();
         assert_eq!(result, expected);
     }
 }

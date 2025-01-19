@@ -13,7 +13,7 @@ impl RegularMoveOptions for BishopMoves {
 }
 
 impl AttackMoveOptions for BishopMoves{
-    fn attack_option(pos: &Position, side: Side) -> impl Iterator<Item=Position> + '_ {
+    fn attack_options(pos: &Position, side: Side) -> impl Iterator<Item=Position> + '_ {
         Self::move_options(pos, side)
     }
 }

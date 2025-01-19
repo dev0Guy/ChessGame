@@ -15,7 +15,7 @@ impl RegularMoveOptions for QueenMoves {
 }
 
 impl AttackMoveOptions for QueenMoves{
-    fn attack_option(pos: &Position, side: Side) -> impl Iterator<Item=Position> + '_ {
+    fn attack_options(pos: &Position, side: Side) -> impl Iterator<Item=Position> + '_ {
         Self::move_options(pos, side)
     }
 }
@@ -101,7 +101,7 @@ mod tests {
             Position::new(File::G, Rank::One),
         ];
 
-        let result: Vec<_> = QueenMoves::attack_option(&pos, Side::White).collect();
+        let result: Vec<_> = QueenMoves::attack_options(&pos, Side::White).collect();
         assert_eq!(result, expected);
     }
 }
