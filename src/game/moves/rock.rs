@@ -1,15 +1,24 @@
-use super::common::{HorizontalMovement, VerticalMovement, Movement};
+use crate::engine::board::pieces::Side;
+use super::common::{HorizontalMovement, VerticalMovement, AttackMoveOptions, RegularMoveOptions};
 use crate::game::Position;
 
-pub struct RockMove;
+pub struct RockMovement;
 
-impl Movement for RockMove {
+impl RegularMoveOptions for RockMovement {
     // Return x-ray of all possible movement (on empty board)
-    fn compute(pos: &Position) -> impl Iterator<Item = Position> + '_ {
-        HorizontalMovement::compute(pos)
-            .chain(VerticalMovement::compute(pos))
+    fn move_options(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_ {
+        HorizontalMovement::move_options(pos, side)
+            .chain(VerticalMovement::move_options(pos,side))
     }
 }
+
+impl AttackMoveOptions for RockMovement {
+    // Return x-ray of all possible movement (on empty board)
+    fn attack_option(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_ {
+        Self::move_options(pos, side)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -38,7 +47,7 @@ mod tests {
             Position::new(File::D, Rank::Eight),
         ];
 
-        let result: Vec<_> = RockMove::compute(&pos).collect();
+        let result: Vec<_> = RockMovement::move_options(&pos, Side::White).collect();
         assert_eq!(result, expected);
     }
 }

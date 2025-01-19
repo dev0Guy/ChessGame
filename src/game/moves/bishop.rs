@@ -1,13 +1,20 @@
-use super::common::{DiagonalMovement, AntiDiagonalMovement, Movement};
+use crate::engine::board::pieces::Side;
+use super::common::{DiagonalMovement, AntiDiagonalMovement, AttackMoveOptions, RegularMoveOptions};
 use crate::game::Position;
 
 pub struct BishopMoves;
 
-impl Movement for BishopMoves {
+impl RegularMoveOptions for BishopMoves {
     // Return x-ray of all possible movement (on empty board both)
-    fn compute(pos: &Position) -> impl Iterator<Item = Position> + '_ {
-        DiagonalMovement::compute(pos)
-            .chain(AntiDiagonalMovement::compute(pos))
+    fn move_options(pos: &Position, side: Side) -> impl Iterator<Item = Position> + '_ {
+        DiagonalMovement::move_options(pos, side)
+            .chain(AntiDiagonalMovement::move_options(pos, side))
+    }
+}
+
+impl AttackMoveOptions for BishopMoves{
+    fn attack_option(pos: &Position, side: Side) -> impl Iterator<Item=Position> + '_ {
+        Self::move_options(pos, side)
     }
 }
 
@@ -36,7 +43,7 @@ mod tests {
             Position::new(File::G, Rank::One),
         ];
 
-        let result: Vec<_> = BishopMoves::compute(&pos).collect();
+        let result: Vec<_> = BishopMoves::move_options(&pos, Side::White).collect();
         assert_eq!(result, expected);
     }
 }
