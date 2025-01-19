@@ -1,3 +1,6 @@
+use std::char::ToLowercase;
+use crate::engine::board::location::Location;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum File {
     A, B, C, D, E, F, G, H,
@@ -77,6 +80,57 @@ impl From<File> for usize {
         match file {
             File::A => 0, File::B => 1, File::C => 2, File::D => 3,
             File::E => 4, File::F => 5, File::G => 6, File::H => 7,
+        }
+    }
+}
+
+impl TryFrom<char> for File {
+    type Error = String;
+
+    fn try_from(c: char) -> Result<Self, Self::Error> {
+        match c {
+            'a' | 'A' => Ok(File::A),
+            'b' | 'B' => Ok(File::B),
+            'c' | 'C' => Ok(File::C),
+            'd' | 'D' => Ok(File::D),
+            'e' | 'E' => Ok(File::E),
+            'f' | 'F' => Ok(File::F),
+            'g' | 'G' => Ok(File::G),
+            'h' | 'H' => Ok(File::H),
+            _ => Err(format!("Invalid file: {}", c)),
+        }
+    }
+}
+
+impl TryFrom<char> for Rank {
+    type Error = String;
+
+    fn try_from(c: char) -> Result<Self, Self::Error> {
+        match c {
+            '1' => Ok(Rank::One),
+            '2' => Ok(Rank::Two),
+            '3' => Ok(Rank::Three),
+            '4' => Ok(Rank::Four),
+            '5' => Ok(Rank::Five),
+            '6' => Ok(Rank::Six),
+            '7' => Ok(Rank::Seven),
+            '8' => Ok(Rank::Eight),
+            _ => Err(format!("Invalid rank: {}", c)),
+        }
+    }
+}
+
+impl TryFrom<String> for Position{
+    type Error = String;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.chars().collect::<Vec<char>>().as_slice() {
+            [file, rank, ..] => {
+                let file = File::try_from(*file)?;
+                let rank = Rank::try_from(*rank)?;
+                Ok(Position::new(file, rank))
+            },
+            _ => panic!("Invalid Position: {}", value),
         }
     }
 }
