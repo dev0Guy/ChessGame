@@ -31,7 +31,7 @@ pub fn get_piece_moves(
     }
 }
 
-pub fn get_piece_attack(
+pub fn get_piece_capture_movement(
     piece_type: PieceType,
     pos: &Position,
     side: Side,
