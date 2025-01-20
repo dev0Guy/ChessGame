@@ -1,10 +1,13 @@
+use crate::bitboard::BitBoard;
+
 mod bitboard;
 mod board;
+mod square;
 
 fn main() {
     let x = bitboard::BitBoard::new(0xff);
-    let y = board::Rank::One;
-    println!("{:?}", y.as_bitboard());
+    let y = square::Rank::Eight;
+    println!("{:?}", BitBoard::from(y));
 
     println!("Hello, world!");
 }
