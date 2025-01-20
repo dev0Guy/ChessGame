@@ -1,0 +1,1 @@
+// TODO: add possible trait for all pieces

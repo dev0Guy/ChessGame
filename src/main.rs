@@ -3,6 +3,8 @@ use crate::bitboard::BitBoard;
 mod bitboard;
 mod board;
 mod square;
+mod piecs;
+mod pieces;
 
 fn main() {
     let x = bitboard::BitBoard::new(0xff);
