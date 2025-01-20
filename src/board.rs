@@ -1,5 +1,10 @@
 use crate::bitboard::BitBoard;
 
+
+/// Represents the ranks (rows) on a chessboard.
+///
+/// Ranks are numbered from 1 (bottom) to 8 (top), where `Rank::One` corresponds
+/// to the bottom row (`a1` to `h1`) and `Rank::Eight` corresponds to the top row (`a8` to `h8`).
 pub enum Rank{
     One,
     Two,
@@ -13,6 +18,10 @@ pub enum Rank{
 
 
 impl Rank{
+    /// Converts the `Rank` into a `BitBoard` representing all squares in that rank.
+    ///
+    /// # Returns
+    /// A `BitBoard` with all bits set for the corresponding rank.
     pub fn as_bitboard(&self) -> BitBoard{
         match self {
             Rank::One => BitBoard::new(0x00000000000000FF),
