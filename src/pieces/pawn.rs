@@ -16,3 +16,5 @@ use crate::bitboard::BitBoard;
 /// - (BLACK) pawn promotion: one square forward or a diagonal capture results in it landing on rank 1
 struct Pawn;
 
+
+
