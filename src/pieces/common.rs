@@ -1,4 +1,11 @@
 use crate::bitboard;
+
+/// Represents the color of a chess piece or player.
+pub enum Color {
+    White,
+    Black,
+}
+
 /// A trait for calculating possible moves for a specific piece type in chess.
 ///
 /// This trait defines a method for determining the valid moves for a given piece type, considering
@@ -21,5 +28,15 @@ pub trait PossibleMoves{
     ///   - Moves that would place the piece on a square occupied by a friendly piece are excluded.
     ///   - Captures (landing on an opponent piece's square) are included.
     ///   - For pieces with complex movement (e.g., sliding pieces), valid moves account for blockers.
-    fn get_moves(own_pieces: &bitboard::BitBoard, opponent_pics: &bitboard::BitBoard) -> bitboard::BitBoard;
+    fn get_moves(own_pieces: &bitboard::BitBoard, opponent_pics: &bitboard::BitBoard, color: Color) -> bitboard::BitBoard;
+}
+
+impl Color {
+    /// Returns the opposite color.
+    pub fn opposite(&self) -> Color{
+        match self {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
+    }
 }
