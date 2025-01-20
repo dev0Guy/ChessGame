@@ -1,7 +1,7 @@
-use std::fmt;
+use std::{fmt, ops};
 
+#[derive(Copy, Clone, PartialEq)]
 pub(crate) struct BitBoard(u64);
-
 
 impl BitBoard{
     /// Creates a new `BitBoard` with the given bitboard value.
@@ -43,5 +43,163 @@ impl fmt::Debug for BitBoard{
             writeln!(f)?;
         }
         writeln!(f, "a b c d e f g h")
+    }
+}
+
+impl ops::BitOr for BitBoard {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        BitBoard(self.0 | rhs.0)
+    }
+}
+
+impl<'a, 'b> ops::BitOr<&'b BitBoard> for &'a BitBoard {
+    type Output = BitBoard;
+
+    fn bitor(self, rhs: &BitBoard) -> Self::Output {
+        BitBoard(self.0 | rhs.0)
+    }
+}
+
+impl ops::BitAnd for BitBoard {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        BitBoard(self.0 & rhs.0)
+    }
+}
+
+impl<'a, 'b> ops::BitAnd<&'b BitBoard> for &'a BitBoard {
+    type Output = BitBoard;
+
+    fn bitand(self, rhs: &BitBoard) -> Self::Output {
+        BitBoard(self.0 & rhs.0)
+    }
+}
+
+impl ops::BitXor for BitBoard {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        BitBoard(self.0 ^ rhs.0)
+    }
+}
+
+impl<'a, 'b> ops::BitXor<&'b BitBoard> for &'a BitBoard {
+    type Output = BitBoard;
+
+    fn bitxor(self, rhs: &BitBoard) -> Self::Output {
+        BitBoard(self.0 ^ rhs.0)
+    }
+}
+
+impl ops::Not for BitBoard {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        BitBoard(!self.0)
+    }
+}
+
+impl<'a> ops::Not for &'a BitBoard {
+    type Output = BitBoard;
+
+    fn not(self) -> Self::Output {
+        BitBoard(!self.0)
+    }
+}
+
+impl ops::Shl<u32> for BitBoard {
+    type Output = Self;
+
+    fn shl(self, rhs: u32) -> Self::Output {
+        BitBoard(self.0 << rhs)
+    }
+}
+
+impl<'a> ops::Shl<u32> for &'a BitBoard {
+    type Output = BitBoard;
+
+    fn shl(self, rhs: u32) -> Self::Output {
+        BitBoard(self.0 << rhs)
+    }
+}
+
+impl ops::Shr<u32> for BitBoard {
+    type Output = Self;
+
+    fn shr(self, rhs: u32) -> Self::Output {
+        BitBoard(self.0 >> rhs)
+    }
+}
+
+impl<'a> ops::Shr<u32> for &'a BitBoard {
+    type Output = BitBoard;
+
+    fn shr(self, rhs: u32) -> Self::Output {
+        BitBoard(self.0 >> rhs)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bitand() {
+        let a = BitBoard(0x00000000000000FF);
+        let b = BitBoard(0x000000000000FF00);
+        let expected = BitBoard(0x0000000000000000);
+
+        assert_eq!(a & b, expected);
+        assert_eq!(&a & &b, expected);
+    }
+
+    #[test]
+    fn test_bitor() {
+        let a = BitBoard(0x00000000000000FF);
+        let b = BitBoard(0x000000000000FF00);
+        let expected = BitBoard(0x000000000000FFFF);
+
+        assert_eq!(a | b, expected);
+        assert_eq!(&a | &b, expected);
+    }
+
+    #[test]
+    fn test_bitxor() {
+        let a = BitBoard(0x00000000000000FF);
+        let b = BitBoard(0x000000000000FF00);
+        let expected = BitBoard(0x000000000000FFFF);
+
+        assert_eq!(a ^ b, expected);
+        assert_eq!(&a ^ &b, expected);
+    }
+
+    #[test]
+    fn test_not() {
+        let a = BitBoard(0x00000000000000FF);
+        let expected = BitBoard(0xFFFFFFFFFFFFFF00);
+
+        assert_eq!(!a, expected);
+        assert_eq!(!&a, expected);
+    }
+
+    #[test]
+    fn test_shl() {
+        let a = BitBoard(0x00000000000000FF);
+        let expected = BitBoard(0x000000000000FF00);
+
+        assert_eq!(a << 8, expected);
+        assert_eq!(&a << 8, expected);
+    }
+
+    #[test]
+    fn test_shr() {
+        let a = BitBoard(0x000000000000FF00);
+        let expected = BitBoard(0x00000000000000FF);
+
+        assert_eq!(a >> 8, expected);
+        assert_eq!(&a >> 8, expected);
     }
 }

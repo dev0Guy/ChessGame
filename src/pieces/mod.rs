@@ -1,7 +1,7 @@
-mod pawn;
-mod common;
-mod knight;
-mod rock;
-mod bishop;
-mod queen;
-mod king;
+pub(crate) mod pawn;
+pub(crate) mod common;
+pub(crate) mod knight;
+pub(crate) mod rock;
+pub(crate) mod bishop;
+pub(crate) mod queen;
+pub(crate) mod king;
