@@ -1,6 +1,7 @@
+use std::num::IntErrorKind::Empty;
 use crate::square::{Rank, File};
 use crate::bitboard::BitBoard;
-use super::common::PossibleMoves;
+use super::common::{Color, PossibleMoves};
 
 
 /// Description
@@ -18,11 +19,91 @@ struct Pawn;
 
 
 impl PossibleMoves for Pawn {
-    fn get_moves(own_pieces: &BitBoard, opponent_pics: &BitBoard) -> BitBoard {
-
+    fn get_moves(piece: &BitBoard, own_pieces: &BitBoard, opponent_pics: &BitBoard, color: Color) -> BitBoard {
         todo!()
     }
 }
 
+impl Pawn {
 
+    /// Calculates the possible single-step moves for pawns of the given color.
+    /// Determines the squares to which a pawn can move forward by one rank.
+    /// A pawn can move forward if the square is empty and it is not located on the 1/8'th rank
+    /// (since pawns cannot move forward once they reach the promotion rank).
+    /// # Parameters
+    /// - `piece`: A `BitBoard` representing the positions of pawns to evaluate.
+    /// - `own_pieces`: A `BitBoard` representing the positions of all friendly pieces.
+    /// - `opponent_pieces`: A `BitBoard` representing the positions of all opponent pieces.
+    /// - `color`: The color of the pawns being evaluated (`Color::White` or `Color::Black`).
+    ///
+    /// # Returns
+    /// A `BitBoard` where each set bit represents a valid single-step move for the pawns.
+    #[inline]
+    fn possible_single_step(piece:&BitBoard, own_pieces: &BitBoard, opponent_pics: &BitBoard, color: Color) -> BitBoard{
+        let empty = Self::empty(own_pieces, opponent_pics);
+        match color {
+            Color::White => (piece << 8) & empty & !BitBoard::from(Rank::Eight),
+            Color::Black => (piece >> 8) & empty & !BitBoard::from(Rank::One)
+        }
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// [from](https://lichess.org/editor/8/8/8/8/8/8/3P4/8_w_HAha_-_0_1?color=white) -> [to](https://lichess.org/editor/8/8/8/8/8/3P4/8/8_w_HAha_-_0_1?color=white)
+    #[test]
+    fn test_possible_pawn_single_step_white() {
+        let piece = BitBoard::new(0x0000000000000800);
+        let own_pieces = BitBoard::new(0x0000000000000800);
+        let opponent_pieces = BitBoard::new(0x0000000000000000);
+
+        let result = Pawn::possible_single_step(&piece, &own_pieces, &opponent_pieces, Color::White);
+
+        let expected = BitBoard::new(0x0000000000080000);
+        assert_eq!(result, expected);
+    }
+
+    /// [from](https://lichess.org/editor/8/3p4/8/8/8/8/8/8_w_HAha_-_0_1?color=white) -> [to](https://lichess.org/editor/8/8/3p4/8/8/8/8/8_w_HAha_-_0_1?color=white)
+    #[test]
+    fn test_possible_pawn_single_step_black() {
+        let piece = BitBoard::new(0x0008000000000000);
+        let own_pieces = BitBoard::new(0x0008000000000000);
+        let opponent_pieces = BitBoard::new(0x0000000000000000);
+
+        let result = Pawn::possible_single_step(&piece, &own_pieces, &opponent_pieces, Color::Black);
+
+        let expected = BitBoard::new(0x0000080000000000);
+        assert_eq!(result, expected);
+    }
+
+    /// [from](https://lichess.org/editor/8/8/8/8/8/3N4/3P4/8_w_HAha_-_0_1?color=white) -> X
+    #[test]
+    fn test_possible_pawn_single_step_white_blocked() {
+        let piece = BitBoard::new(0x0000000000000800);
+        let own_pieces = BitBoard::new(0x0000000000080000);
+        let opponent_pieces = BitBoard::new(0x0000000000000000);
+
+        let result = Pawn::possible_single_step(&piece, &own_pieces, &opponent_pieces, Color::White);
+
+        let expected = BitBoard::new(0x0000000000000000);
+        assert_eq!(result, expected);
+    }
+
+    /// [from](https://lichess.org/editor/8/3p4/3n4/8/8/8/8/8_w_HAha_-_0_1?color=white) -> X
+    #[test]
+    fn test_possible_pawn_single_step_black_blocked() {
+        let piece = BitBoard::new(0x0008000000000000);
+        let own_pieces = BitBoard::new(0x0000080000000000);
+        let opponent_pieces = BitBoard::new(0x0000000000000000);
+
+        let result = Pawn::possible_single_step(&piece, &own_pieces, &opponent_pieces, Color::Black);
+
+        let expected = BitBoard::new(0x0000000000000000);
+        assert_eq!(result, expected);
+    }
+}
 

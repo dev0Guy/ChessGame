@@ -35,12 +35,12 @@ pub trait PossibleMoves{
 
     #[inline]
     fn occupied(own_pieces: &BitBoard, opponent_pics: &BitBoard) -> BitBoard {
-        todo!()
+        own_pieces | opponent_pics
     }
 
     #[inline]
     fn empty(own_pieces: &BitBoard, opponent_pics: &BitBoard) -> BitBoard {
-        todo!()
+        !(Self::occupied(own_pieces, opponent_pics))
     }
 
 }
