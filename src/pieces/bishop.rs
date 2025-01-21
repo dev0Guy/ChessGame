@@ -20,22 +20,23 @@ const DIAGONAL_MASK: [u64; 15] =  [
     0x80,
 ];
 
+
 const ANTI_DIAGONAL_MASK: [u64; 15] = [
-    0x0000000000000001, // a1
-    0x0000000000000102, // a2-b1
-    0x0000000000010204, // a3-b2-c1
-    0x0000000001020408, // a4-b3-c2-d1
-    0x0000000102040810, // a5-b4-c3-d2-e1
-    0x0000010204081020, // a6-b5-c4-d3-e2-f1
-    0x0001020408102040, // a7-b6-c5-d4-e3-f2-g1
-    0x0102040810204080, // a8-b7-c6-d5-e4-f3-g2-h1
-    0x2040810204080000, // b8-c7-d6-e5-f4-g3-h2
-    0x4081020408000000, // c8-d7-e6-f5-g4-h3
-    0x8102040800000000, // d8-e7-f6-g5-h4
-    0x1020408000000000, // e8-f7-g6-h5
-    0x2040800000000000, // f8-g7-h6
-    0x4080000000000000, // g8-h7
-    0x8000000000000000, // h8
+    0x1,
+    0x102,
+    0x10204,
+    0x1020408,
+    0x102040810,
+    0x10204081020,
+    0x1020408102040,
+    0x102040810204080,
+    0x204081020408000,
+    0x408102040800000,
+    0x810204080000000,
+    0x1020408000000000,
+    0x2040800000000000,
+    0x4080000000000000,
+    0x8000000000000000,
 ];
 
 
@@ -73,7 +74,8 @@ impl Bishop {
     fn get_anti_diagonal_mask(square: Square) -> BitBoard{
         let rank = square.rank() as usize;
         let file = square.file() as usize;
-        BitBoard::new(DIAGONAL_MASK[file + rank])
+        println!("{}, {}", rank, file);
+        BitBoard::new(ANTI_DIAGONAL_MASK[file+rank])
     }
 
     /// Computes all possible diagonal moves for a piece located on the given square.
@@ -103,11 +105,11 @@ impl Bishop {
     /// # Returns
     /// A [`BitBoard`] representing all valid anti-diagonal moves for the piece.
     fn get_anti_diagonal_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
-        let anti_diagonal_mask = Self::get_diagonal_mask(square);
+        let anti_diagonal_mask = Self::get_anti_diagonal_mask(square);
         let occupied_anti_diagonal = Self::occupied(own_pieces, opponent_pieces) & anti_diagonal_mask;
-        let ant_diagonal_up = occupied_anti_diagonal - (*piece * 2);
+        let anti_diagonal_up = occupied_anti_diagonal - (*piece * 2);
         let anti_diagonal_down = (occupied_anti_diagonal.reverse() - ((*piece).reverse() * 2)).reverse();
-        (ant_diagonal_up ^ anti_diagonal_down) & anti_diagonal_mask
+        ((anti_diagonal_up ^ anti_diagonal_down) & anti_diagonal_mask) & !own_pieces
     }
 }
 
@@ -221,4 +223,116 @@ mod tests {
         let expected = BitBoard::from(b2);
         assert_eq!(result, expected);
     }
+
+    #[test]
+    fn test_anti_diagonal_moves_unobstructed() {
+        let square = Square::new(File::D, Rank::Four);
+        let a7 = Square::new(File::A, Rank::Seven);
+        let b6 = Square::new(File::B, Rank::Six);
+        let c5 = Square::new(File::C, Rank::Five);
+        let e3 = Square::new(File::E, Rank::Three);
+        let f2 = Square::new(File::F, Rank::Two);
+        let g1 = Square::new(File::G, Rank::One);
+
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::new(0);
+        let opponent_pieces = BitBoard::new(0);
+
+        let result = Bishop::get_anti_diagonal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(a7)
+            | BitBoard::from(b6)
+            | BitBoard::from(c5)
+            | BitBoard::from(e3)
+            | BitBoard::from(f2)
+            | BitBoard::from(g1);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_anti_diagonal_moves_blocked_by_own_pieces() {
+        let square = Square::new(File::D, Rank::Four);
+        let b6 = Square::new(File::B, Rank::Six);
+        let e3 = Square::new(File::E, Rank::Three);
+        let c5 = Square::new(File::C, Rank::Five);
+
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::from(b6) | BitBoard::from(e3);
+        let opponent_pieces = BitBoard::new(0);
+
+        let result = Bishop::get_anti_diagonal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(c5);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_anti_diagonal_moves_blocked_by_opponent_pieces() {
+        let square = Square::new(File::D, Rank::Four);
+        let b6 = Square::new(File::B, Rank::Six);
+        let e3 = Square::new(File::E, Rank::Three);
+        let c5 = Square::new(File::C, Rank::Five);
+
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::new(0);
+        let opponent_pieces = BitBoard::from(b6) | BitBoard::from(e3);
+
+        let result = Bishop::get_anti_diagonal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(c5) | BitBoard::from(b6) | BitBoard::from(e3);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_anti_diagonal_moves_corner_case() {
+        let square = Square::new(File::H, Rank::One);
+        let a8 = Square::new(File::A, Rank::Eight);
+        let b7 = Square::new(File::B, Rank::Seven);
+        let c6 = Square::new(File::C, Rank::Six);
+        let d5 = Square::new(File::D, Rank::Five);
+        let e4 = Square::new(File::E, Rank::Four);
+        let f3 = Square::new(File::F, Rank::Three);
+        let g2 = Square::new(File::G, Rank::Two);
+
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::new(0);
+        let opponent_pieces = BitBoard::new(0);
+
+        let result = Bishop::get_anti_diagonal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(a8) | BitBoard::from(b7)
+            | BitBoard::from(c6) | BitBoard::from(d5) | BitBoard::from(e4) | BitBoard::from(f3) | BitBoard::from(g2);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_anti_diagonal_moves_corner_blocked() {
+        let a8 = Square::new(File::A, Rank::Eight);
+        let b7 = Square::new(File::B, Rank::Seven);
+
+        let piece = BitBoard::from(a8);
+        let own_pieces = BitBoard::from(b7);
+        let opponent_pieces = BitBoard::new(0);
+
+        let result = Bishop::get_anti_diagonal_moves(&piece, a8, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::empty();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_anti_diagonal_moves_corner_blocked_but_can_capture() {
+        let a8 = Square::new(File::A, Rank::Eight);
+        let b7 = Square::new(File::B, Rank::Seven);
+
+        let piece = BitBoard::from(a8);
+        let own_pieces = BitBoard::new(0);
+        let opponent_pieces = BitBoard::from(b7);
+
+        let result = Bishop::get_anti_diagonal_moves(&piece, a8, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(b7);
+        assert_eq!(result, expected);
+    }
+
 }
