@@ -164,7 +164,7 @@ impl ops::Mul<u64> for BitBoard {
     ///
     /// Multiplies the internal `u64` value of the `BitBoard` by the provided `u64` value.
     fn mul(self, rhs: u64) -> Self::Output {
-        BitBoard(self.0 * rhs)
+        BitBoard(self.0.wrapping_mul(rhs))
     }
 }
 
