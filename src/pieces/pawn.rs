@@ -15,7 +15,7 @@ use super::common::{Color, PossibleMoves};
 /// - (Black) pawn can capture (LEFT) for all file expect rank 1 to all file expect H and if not empty with enemy piece
 /// - (Black) pawn can capture (RIGHT) for all file expect rank 1 to all file expect A and if not empty with enemy piece
 /// - (BLACK) pawn promotion: one square forward or a diagonal capture results in it landing on rank 1
-struct Pawn;
+pub(crate) struct Pawn;
 
 
 impl PossibleMoves for Pawn {

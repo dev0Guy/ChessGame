@@ -17,7 +17,7 @@ pub enum Color {
 /// # Purpose
 /// The trait allows different chess pieces to implement their specific move generation logic, taking into
 /// account movement rules, captures, and restrictions (like friendly piece blocking).
-pub trait PossibleMoves{
+pub(crate) trait PossibleMoves{
     /// Calculates the possible moves for a piece type given the current board state.
     ///
     /// # Parameters

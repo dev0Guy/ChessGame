@@ -43,7 +43,7 @@ const ANTI_DIAGONAL_MASK: [u64; 15] = [
 /// Description
 /// Slide in diagonal or anti-diagonal
 /// stop movement when capture other piece or blocked by its own piece(exclusive)
-struct Bishop;
+pub(crate) struct Bishop;
 
 
 impl PossibleMoves for Bishop {
