@@ -19,10 +19,10 @@ struct Pawn;
 
 
 impl PossibleMoves for Pawn {
-    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pics: &BitBoard, color: &Color) -> BitBoard {
-        Self::possible_single_step(piece, own_pieces, opponent_pics, color)
-            | Self::possible_double_step(piece, own_pieces, opponent_pics, color)
-            | Self::possible_capture_step(piece, own_pieces, opponent_pics, color)
+    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
+        Self::possible_single_step(piece, own_pieces, opponent_pieces, color)
+            | Self::possible_double_step(piece, own_pieces, opponent_pieces, color)
+            | Self::possible_capture_step(piece, own_pieces, opponent_pieces, color)
     }
 }
 

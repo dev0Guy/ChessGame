@@ -23,6 +23,11 @@ impl BitBoard{
     pub fn empty() -> Self {
         Self(0)
     }
+
+    // Returns a `BitBoard` with its bits reversed.
+    pub fn reverse(&self) -> Self {
+        BitBoard(self.0.reverse_bits())
+    }
 }
 
 impl fmt::Debug for BitBoard{
@@ -141,6 +146,30 @@ impl<'a> ops::Shr<u32> for &'a BitBoard {
         BitBoard(self.0 >> rhs)
     }
 }
+
+impl ops::Sub for BitBoard {
+    type Output = Self;
+
+    /// Subtracts one `BitBoard` from another.
+    fn sub(self, rhs: Self) -> Self::Output {
+        BitBoard(self.0.wrapping_sub(rhs.0))
+    }
+}
+
+
+impl ops::Mul<u64> for BitBoard {
+    type Output = Self;
+
+    /// Performs multiplication between a `BitBoard` and a `u64` value.
+    ///
+    /// Multiplies the internal `u64` value of the `BitBoard` by the provided `u64` value.
+    fn mul(self, rhs: u64) -> Self::Output {
+        BitBoard(self.0 * rhs)
+    }
+}
+
+
+// TODO: change test to use square (reversed, sub, mul)
 
 #[cfg(test)]
 mod tests {

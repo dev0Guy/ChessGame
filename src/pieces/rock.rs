@@ -8,7 +8,7 @@ use super::common::{Color, PossibleMoves};
 struct Rock;
 
 impl PossibleMoves for Rock {
-    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pics: &BitBoard, color: &Color) -> BitBoard {
+    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
         todo!()
     }
 }
@@ -16,7 +16,126 @@ impl PossibleMoves for Rock {
 
 
 impl Rock{
-    fn get_horizontal_moves(){
+    /// Calculates all possible horizontal moves for a piece located at the given square.
+    /// # Parameters
+    /// - `piece`: A [`BitBoard`] representing the single position of the piece whose horizontal moves are being calculated.
+    /// - `square`: A [`Square`] representing the position of the piece.
+    /// - `own_pieces`: A [`BitBoard`] representing the positions of all friendly pieces.
+    /// - `opponent_pieces`: A [`BitBoard`] representing the positions of all opponent pieces.
+    /// - `color`: The [`Color`] of the piece (`Color::White` or `Color::Black`).
+    ///
+    /// # Returns
+    /// A [`BitBoard`] representing all valid horizontal moves for the piece.
+    fn get_horizontal_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard{
+        let horizontal_mask= BitBoard::from(square.rank());
+        let occupied_horizontal = Self::occupied(own_pieces, opponent_pieces) & horizontal_mask;
+        let left_side = (occupied_horizontal & horizontal_mask) - ( (*piece) * 2);
+        let right_side = ((occupied_horizontal & horizontal_mask).reverse() - (piece.reverse() * 2)).reverse();
+        let movement_with_capture  = (left_side ^ right_side) & horizontal_mask;
+        movement_with_capture & !own_pieces
+    }
 
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_horizontal_moves_unobstructed() {
+        let square = Square::new(File::D, Rank::Two);
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::new(0);
+        let opponent_pieces = BitBoard::new(0);
+
+        let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(Rank::Two) ^ BitBoard::from(square);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_get_horizontal_moves_blocked_by_friendly() {
+        let square = Square::new(File::D, Rank::Two);
+        let e2 = Square::new(File::E, Rank::Two);
+        let b2 = Square::new(File::B, Rank::Two);
+        let c2 = Square::new(File::C, Rank::Two);
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::from(e2) | BitBoard::from(b2);
+        let opponent_pieces = BitBoard::new(0);
+
+        let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(c2);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_get_horizontal_moves_blocked_by_opponent() {
+        let square = Square::new(File::D, Rank::Two);
+        let b2 = Square::new(File::B, Rank::Two);
+        let c2 = Square::new(File::C, Rank::Two);
+        let e2 = Square::new(File::E, Rank::Two);
+        let f2 = Square::new(File::F, Rank::Two);
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::new(0);
+        let opponent_pieces = BitBoard::from(b2) | BitBoard::from(f2);
+
+        let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(c2) | BitBoard::from(e2) | BitBoard::from(f2);
+    }
+
+    #[test]
+    fn test_get_horizontal_moves_on_edge() {
+        let square = Square::new(File::H, Rank::Two);
+        let a2 = Square::new(File::A, Rank::Two);
+        let b2 = Square::new(File::B, Rank::Two);
+        let c2 = Square::new(File::C, Rank::Two);
+        let d2 = Square::new(File::D, Rank::Two);
+        let e2 = Square::new(File::E, Rank::Two);
+        let f2 = Square::new(File::F, Rank::Two);
+        let g2 = Square::new(File::G, Rank::Two);
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::new(0);
+        let opponent_pieces = BitBoard::new(0);
+
+        let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(a2)
+            | BitBoard::from(b2)
+            | BitBoard::from(c2)
+            | BitBoard::from(d2)
+            | BitBoard::from(e2)
+            | BitBoard::from(f2)
+            | BitBoard::from(g2);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_get_horizontal_moves_opponent_at_end() {
+        let square = Square::new(File::D, Rank::Two);
+        let a2 = Square::new(File::A, Rank::Two);
+        let b2 = Square::new(File::B, Rank::Two);
+        let c2 = Square::new(File::C, Rank::Two);
+        let e2 = Square::new(File::E, Rank::Two);
+        let f2 = Square::new(File::F, Rank::Two);
+        let g2 = Square::new(File::G, Rank::Two);
+        let h2 = Square::new(File::H, Rank::Two);
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::new(0);
+        let opponent_pieces = BitBoard::from(h2);
+
+        let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(a2)
+            | BitBoard::from(b2)
+            | BitBoard::from(c2)
+            | BitBoard::from(e2)
+            | BitBoard::from(f2)
+            | BitBoard::from(g2)
+            | BitBoard::from(h2);
+        assert_eq!(result, expected);
     }
 }

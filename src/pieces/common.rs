@@ -33,16 +33,16 @@ pub trait PossibleMoves{
     ///   - Moves that would place the piece on a square occupied by a friendly piece are excluded.
     ///   - Captures (landing on an opponent piece's square) are included.
     ///   - For pieces with complex movement (e.g., sliding pieces), valid moves account for blockers.
-    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pics: &BitBoard, color: &Color) -> BitBoard;
+    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard;
 
     #[inline]
-    fn occupied(own_pieces: &BitBoard, opponent_pics: &BitBoard) -> BitBoard {
-        own_pieces | opponent_pics
+    fn occupied(own_pieces: &BitBoard, opponent_pieces: &BitBoard) -> BitBoard {
+        own_pieces | opponent_pieces
     }
 
     #[inline]
-    fn empty(own_pieces: &BitBoard, opponent_pics: &BitBoard) -> BitBoard {
-        !(Self::occupied(own_pieces, opponent_pics))
+    fn empty(own_pieces: &BitBoard, opponent_pieces: &BitBoard) -> BitBoard {
+        !(Self::occupied(own_pieces, opponent_pieces))
     }
 
 }
