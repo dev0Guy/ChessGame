@@ -15,7 +15,6 @@ impl PossibleMoves for Rock {
 }
 
 
-
 impl Rock{
     /// Calculates all possible horizontal moves for a piece located at the given square.
     /// # Parameters
@@ -56,8 +55,6 @@ impl Rock{
         let movement_with_capture  = (up ^ down) & vertical_mask;
         movement_with_capture & !own_pieces
     }
-
-
 }
 
 
@@ -283,5 +280,84 @@ mod tests {
         assert_eq!(result, expected);
     }
 
+    #[test]
+    fn test_rock_fully_blocked_by_own_pieces() {
+        let square = Square::new(File::D, Rank::Four);
+        let d1 = Square::new(File::D, Rank::One);
+        let d2 = Square::new(File::D, Rank::Two);
+        let d3 = Square::new(File::D, Rank::Three);
+        let d5 = Square::new(File::D, Rank::Five);
+        let d6 = Square::new(File::D, Rank::Six);
+        let d7 = Square::new(File::D, Rank::Seven);
+        let d8 = Square::new(File::D, Rank::Eight);
+        let a4 = Square::new(File::A, Rank::Four);
+        let b4 = Square::new(File::B, Rank::Four);
+        let c4 = Square::new(File::C, Rank::Four);
+        let e4 = Square::new(File::E, Rank::Four);
+        let f4 = Square::new(File::F, Rank::Four);
+        let g4 = Square::new(File::G, Rank::Four);
+        let h4 = Square::new(File::H, Rank::Four);
 
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::from(d1)
+            | BitBoard::from(d2)
+            | BitBoard::from(d3)
+            | BitBoard::from(d5)
+            | BitBoard::from(d6)
+            | BitBoard::from(d7)
+            | BitBoard::from(d8)
+            | BitBoard::from(a4)
+            | BitBoard::from(b4)
+            | BitBoard::from(c4)
+            | BitBoard::from(e4)
+            | BitBoard::from(f4)
+            | BitBoard::from(g4)
+            | BitBoard::from(h4);
+        let opponent_pieces = BitBoard::new(0);
+
+        let result = Rock::get_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::new(0);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_rock_fully_blocked_but_can_capture_opponents() {
+        let square = Square::new(File::D, Rank::Four);
+        let d1 = Square::new(File::D, Rank::One);
+        let d2 = Square::new(File::D, Rank::Two);
+        let d3 = Square::new(File::D, Rank::Three);
+        let d5 = Square::new(File::D, Rank::Five);
+        let d6 = Square::new(File::D, Rank::Six);
+        let d7 = Square::new(File::D, Rank::Seven);
+        let d8 = Square::new(File::D, Rank::Eight);
+        let a4 = Square::new(File::A, Rank::Four);
+        let b4 = Square::new(File::B, Rank::Four);
+        let c4 = Square::new(File::C, Rank::Four);
+        let e4 = Square::new(File::E, Rank::Four);
+        let f4 = Square::new(File::F, Rank::Four);
+        let g4 = Square::new(File::G, Rank::Four);
+        let h4 = Square::new(File::H, Rank::Four);
+
+        let piece = BitBoard::from(square);
+        let own_pieces = BitBoard::from(d1)
+            | BitBoard::from(d2)
+            | BitBoard::from(d3)
+            | BitBoard::from(d5)
+            | BitBoard::from(d6)
+            | BitBoard::from(d7)
+            | BitBoard::from(d8)
+            | BitBoard::from(a4)
+            | BitBoard::from(b4)
+            | BitBoard::from(c4)
+            | BitBoard::from(f4)
+            | BitBoard::from(g4)
+            | BitBoard::from(h4);
+        let opponent_pieces = BitBoard::from(e4);
+
+        let result = Rock::get_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+
+        let expected = BitBoard::from(e4);
+        assert_eq!(result, expected);
+    }
 }
