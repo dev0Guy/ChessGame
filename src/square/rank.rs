@@ -5,6 +5,7 @@ use crate::bitboard::BitBoard;
 ///
 /// Ranks are numbered from 1 (bottom) to 8 (top), where `Rank::One` corresponds
 /// to the bottom row (`a1` to `h1`) and `Rank::Eight` corresponds to the top row (`a8` to `h8`).
+#[derive(Copy, Clone, PartialEq)]
 pub enum Rank{
     One,
     Two,

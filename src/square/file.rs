@@ -4,6 +4,7 @@ use crate::bitboard::BitBoard;
 ///
 /// Files are labeled from `A` (leftmost column) to `H` (rightmost column), where `File::A`
 /// corresponds to the `a`-file and `File::H` corresponds to the `h`-file.
+#[derive(Copy, Clone, PartialEq)]
 pub enum File {
     A,
     B,

@@ -1,5 +1,5 @@
 use std::num::IntErrorKind::Empty;
-use crate::square::{Rank, File};
+use crate::square::{Rank, File, Square};
 use crate::bitboard::BitBoard;
 use super::common::{Color, PossibleMoves};
 
@@ -19,10 +19,10 @@ struct Pawn;
 
 
 impl PossibleMoves for Pawn {
-    fn get_moves(piece: &BitBoard, own_pieces: &BitBoard, opponent_pics: &BitBoard, color: &Color) -> BitBoard {
+    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pics: &BitBoard, color: &Color) -> BitBoard {
         Self::possible_single_step(piece, own_pieces, opponent_pics, color)
-        | Self::possible_double_step(piece, own_pieces, opponent_pics, color)
-        | Self::possible_capture_step(piece, own_pieces, opponent_pics, color)
+            | Self::possible_double_step(piece, own_pieces, opponent_pics, color)
+            | Self::possible_capture_step(piece, own_pieces, opponent_pics, color)
     }
 }
 
@@ -106,6 +106,7 @@ impl Pawn {
 
 
 // TODO: rewrite test with Square format to bitboard for more clear representation
+// TODO: add test for all together (get moves)
 #[cfg(test)]
 mod tests {
     use crate::square::Square;
