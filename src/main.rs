@@ -1,4 +1,5 @@
 use crate::bitboard::BitBoard;
+use crate::engine::game;
 
 mod bitboard;
 mod board;
@@ -8,9 +9,7 @@ mod engine;
 
 // TODO: when building the game should get attack vector and decrease from king movements
 fn main() {
-    let x = bitboard::BitBoard::new(0xff);
-    let y = square::Rank::Eight;
-    println!("{:?}", BitBoard::from(y));
-
-    println!("Hello, world!");
+    let game = game::Game::new();
+    // println!("{:?}", BitBoard::new(0x10204081020));
+    // println!("{:?}", BitBoard::from(Bishop::get_diagonal_mask(Square::new(File::D, Rank::Two))));
 }

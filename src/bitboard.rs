@@ -29,9 +29,8 @@ impl BitBoard{
         BitBoard(self.0.reverse_bits())
     }
 
-    /// return inner value
-    pub fn value(&self) -> u64 {
-        self.0
+    pub fn is_empty(&self) -> bool{
+        self.0 == 0
     }
 }
 
@@ -172,6 +171,17 @@ impl ops::Mul<u64> for BitBoard {
     }
 }
 
+impl ops::BitOrAssign for BitBoard{
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl<'a> ops::BitOrAssign<&'a BitBoard> for BitBoard {
+    fn bitor_assign(&mut self, rhs: &'a BitBoard) {
+        self.0 |= rhs.0;
+    }
+}
 
 #[cfg(test)]
 mod tests {

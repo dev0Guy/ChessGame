@@ -5,11 +5,9 @@ use crate::square::{File, Rank, Square};
 
 pub(crate) struct Knight;
 
-const KNIGHT_MASK: u64 = 43234889994;
-
 impl PossibleMoves for Knight{
 
-    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
+    fn get_moves(piece: &BitBoard, _square: Square, own_pieces: &BitBoard, _opponent_pieces: &BitBoard, _color: &Color) -> BitBoard {
         let file_a =  BitBoard::from(File::A);
         let file_b = BitBoard::from(File::B);
         let file_g = BitBoard::from(File::G);

@@ -1,8 +1,9 @@
+use strum_macros::EnumIter;
 use crate::bitboard::BitBoard;
 use crate::square::Square;
 
 /// Represents the color of a chess piece or player.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, EnumIter)]
 pub enum Color {
     White,
     Black,
@@ -64,12 +65,19 @@ pub(crate) trait PossibleMoves{
 
 }
 
-impl Color {
-    /// Returns the opposite color.
+
+impl Color{
     pub fn opposite(&self) -> Color{
         match self {
             Color::White => Color::Black,
-            Color::Black => Color::White,
+            Color::Black => Color::Black
         }
+    }
+}
+
+
+impl From<Color> for usize{
+    fn from(value: Color) -> Self {
+        value as usize
     }
 }

@@ -2,16 +2,13 @@ use crate::bitboard::BitBoard;
 use crate::pieces::common::{Color, PossibleMoves};
 use crate::square::{File, Square};
 
-const KING_MASK: u64 = 0x0000000000070507;
-const FOCAL_POINT: u64 = 9;
-
 pub(crate) struct King;
 
 impl PossibleMoves for King{
-    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
+    fn get_moves(piece: &BitBoard, _square: Square, own_pieces: &BitBoard, _opponent_pieces: &BitBoard, _color: &Color) -> BitBoard {
         let horizontal_movement = (piece << 1) | (piece >> 1) | *piece;
         let movement = horizontal_movement | horizontal_movement << 8 | horizontal_movement >> 8;
-        movement & !own_pieces &!piece
+        movement & !own_pieces
     }
 }
 
@@ -33,7 +30,7 @@ mod tests {
         let e3 = Square::new(File::E, Rank::Three);
         let e4 = Square::new(File::E, Rank::Four);
         let e5 = Square::new(File::E, Rank::Five);
-        let own_pieces = BitBoard::from(c3) | BitBoard::from(e3);
+        let own_pieces = BitBoard::from(c3) | BitBoard::from(e3) | BitBoard::from(d4);
         let opponent_pieces = BitBoard::from(d5);
 
         let king_moves = King::get_moves(&BitBoard::from(d4), d4, &own_pieces, &opponent_pieces, &Color::White);
@@ -51,7 +48,7 @@ mod tests {
         let b1 = Square::new(File::B, Rank::One);
         let b2 = Square::new(File::B, Rank::Two);
 
-        let own_pieces = BitBoard::from(a2) | BitBoard::from(b1);
+        let own_pieces = BitBoard::from(a2) | BitBoard::from(b1) | BitBoard::from(a1);
         let opponent_pieces = BitBoard::empty();
 
         let king_moves = King::get_moves(&BitBoard::from(a1), a1, &own_pieces, &opponent_pieces, &Color::White);
@@ -67,7 +64,7 @@ mod tests {
         let b1 = Square::new(File::B, Rank::One);
         let b2 = Square::new(File::B, Rank::Two);
 
-        let own_pieces = BitBoard::from(a2) | BitBoard::from(b1) | BitBoard::from(b2);
+        let own_pieces = BitBoard::from(a2) | BitBoard::from(b1) | BitBoard::from(b2) | BitBoard::from(a1);
         let opponent_pieces = BitBoard::empty();
 
         let king_moves = King::get_moves(&BitBoard::from(a1), a1, &own_pieces, &opponent_pieces, &Color::White);

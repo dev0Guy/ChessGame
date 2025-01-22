@@ -1,4 +1,3 @@
-use std::num::IntErrorKind::Empty;
 use crate::square::{Rank, File, Square};
 use crate::bitboard::BitBoard;
 use super::common::{Color, PossibleMoves};
@@ -8,13 +7,13 @@ pub(crate) struct Pawn;
 
 
 impl PossibleMoves for Pawn {
-    fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
+    fn get_moves(piece: &BitBoard, _square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
         Self::possible_single_step(piece, own_pieces, opponent_pieces, color)
             | Self::possible_double_step(piece, own_pieces, opponent_pieces, color)
             | Self::possible_capture_step(piece, own_pieces, opponent_pieces, color)
     }
 
-    fn get_capture(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
+    fn get_capture(piece: &BitBoard, _square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
         Self::possible_capture_step(piece, own_pieces, opponent_pieces, color)
     }
 }
@@ -92,7 +91,7 @@ impl Pawn {
             Color::White => (piece << (8 - 1)) & *opponent_pieces & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::A),
             Color::Black => (piece >> (8 - 1)) & *opponent_pieces & !BitBoard::from(Rank::One) & !BitBoard::from(File::A),
         };
-        left_capture | right_capture
+        (left_capture | right_capture) & !own_pieces
     }
 
 }
@@ -180,9 +179,6 @@ mod tests {
         let result = Pawn::possible_double_step(&piece, &own_pieces, &opponent_pieces, &Color::Black);
 
         let expected = BitBoard::new(0x0000000800000000);
-        println!("OAWN {:?}", own_pieces);
-        println!("OPP {:?}", opponent_pieces);
-        println!("BWN {:?}", result);
         assert_eq!(result, expected);
     }
 
@@ -255,39 +251,47 @@ mod tests {
     /// [from](https://lichess.org/editor/8/8/8/8/8/4b3/3P4/8_w_HAha_-_0_1?color=white) -> [to](https://lichess.org/editor/8/8/8/8/8/4P3/8/8_w_HAha_-_0_1?color=white)
     #[test]
     fn test_possible_capture_step_white_right() {
-        let piece = BitBoard::new(0x0000000000000800);
-        let own_pieces = BitBoard::new(0x0000000000000800);
-        let opponent_pieces = BitBoard::new(0x0000000000020000);
+        let d2 = Square::new(File::D, Rank::Two);
+        let e3 = Square::new(File::E, Rank::Three);
+        let piece = BitBoard::from(d2);
+        let own_pieces = BitBoard::empty();
+        let opponent_pieces = BitBoard::from(e3);
 
         let result = Pawn::possible_capture_step(&piece, &own_pieces, &opponent_pieces, &Color::White);
 
-        let expected = BitBoard::new(0x0000000000020000);
+        let expected = BitBoard::from(e3);
         assert_eq!(result, expected);
     }
 
     /// [from](https://lichess.org/editor/8/3p4/2B5/8/8/8/8/8_w_HAha_-_0_1?color=white) -> [to](https://lichess.org/editor/8/8/2p5/8/8/8/8/8_w_HAha_-_0_1?color=white)
     #[test]
     fn test_possible_capture_step_black_left() {
-        let piece = BitBoard::new(0x0000000800000000);
-        let own_pieces = BitBoard::new(0x0000000800000000);
-        let opponent_pieces = BitBoard::new(0x0000000008000000);
+        let d7 = Square::new(File::D, Rank::Seven);
+        let c6 = Square::new(File::C, Rank::Six);
+        let piece = BitBoard::from(d7);
+        let own_pieces = BitBoard::empty();
+        let opponent_pieces = BitBoard::from(c6);
 
         let result = Pawn::possible_capture_step(&piece, &own_pieces, &opponent_pieces, &Color::Black);
 
-        let expected = BitBoard::new(0x0000000008000000);
+        let expected = BitBoard::from(c6);
         assert_eq!(result, expected);
     }
 
     /// [from](https://lichess.org/editor/8/3p4/4B3/8/8/8/8/8_w_HAha_-_0_1?color=white) -> [to](https://lichess.org/editor/8/8/4p3/8/8/8/8/8_w_HAha_-_0_1?color=white)
     #[test]
     fn test_possible_capture_step_black_right() {
-        let piece = BitBoard::new(0x0000000800000000);
-        let own_pieces = BitBoard::new(0x0000000800000000);
-        let opponent_pieces = BitBoard::new(0x0000000200000000);
+        let d7 = Square::new(File::D, Rank::Seven);
+        let d6 = Square::new(File::D, Rank::Six);
+        let e6 = Square::new(File::E, Rank::Six);
+
+        let piece = BitBoard::from(d7);
+        let own_pieces = BitBoard::from(d6);
+        let opponent_pieces = BitBoard::from(e6);
 
         let result = Pawn::possible_capture_step(&piece, &own_pieces, &opponent_pieces, &Color::Black);
 
-        let expected = BitBoard::new(0x0000000200000000);
+        let expected = BitBoard::from(e6);
         assert_eq!(result, expected);
     }
 

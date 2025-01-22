@@ -6,19 +6,57 @@ pub(crate) mod bishop;
 pub(crate) mod queen;
 pub(crate) mod king;
 
-
+use strum_macros::EnumIter;
 use rock::Rock;
 use bishop::Bishop;
-use crate::pieces::common::PossibleMoves;
+use crate::bitboard::BitBoard;
+use crate::pieces::common::{Color, PossibleMoves};
+use crate::square::Square;
 
-pub fn get_piece_moves(v: usize){
-    // match v {
-    //     0 => pawn::Pawn::get_moves,
-    //     1 => knight::Knight::get_moves,
-    //     2 => Bishop::get_moves,
-    //     3 => Rock::get_moves,
-    //     4 => queen::Queen::get_moves),
-    //     5 => king::King::get_moves),
-    //     _ => unreachable!(),
-    // }
+// TODO: create enum for pieces
+#[derive(EnumIter, Clone)]
+pub(crate) enum Piece{
+    Pawn,
+    Knight,
+    Rock,
+    Bishop,
+    Queen,
+    King,
 }
+
+
+type CaculateFn = fn(&BitBoard, Square, &BitBoard, &BitBoard, &Color) -> BitBoard;
+
+impl Piece{
+
+    pub fn moves_function(&self) -> CaculateFn {
+        match self {
+            Piece::Pawn => pawn::Pawn::get_moves,
+            Piece::Knight => knight::Knight::get_moves,
+            Piece::Bishop => Bishop::get_moves,
+            Piece::Rock => Rock::get_moves,
+            Piece::Queen => queen::Queen::get_moves,
+            Piece::King => king::King::get_moves,
+        }
+    }
+
+    pub fn capture_function(&self) -> CaculateFn {
+        match self {
+            Piece::Pawn => pawn::Pawn::get_capture,
+            Piece::Knight => knight::Knight::get_capture,
+            Piece::Bishop => Bishop::get_capture,
+            Piece::Rock => Rock::get_capture,
+            Piece::Queen => queen::Queen::get_capture,
+            Piece::King => king::King::get_capture,
+        }
+    }
+}
+
+impl From<Piece> for usize{
+    fn from(value: Piece) -> Self {
+        value as usize
+    }
+}
+
+
+

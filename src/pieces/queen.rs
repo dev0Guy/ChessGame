@@ -67,7 +67,7 @@ mod tests {
 
         let moves = Queen::get_moves(&BitBoard::from(a1), a1, &own_pieces, &opponent_pieces, &Color::White);
 
-        let mut expected = opponent_pieces;
+        let expected = opponent_pieces;
         assert_eq!(moves, expected);
 
     }

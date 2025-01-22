@@ -26,13 +26,13 @@ impl Rock{
     ///
     /// # Returns
     /// A [`BitBoard`] representing all valid horizontal moves for the piece.
-    fn get_horizontal_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard{
+    fn get_horizontal_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, _color: &Color) -> BitBoard{
         let horizontal_mask= BitBoard::from(square.rank());
         let occupied_horizontal = Self::occupied(own_pieces, opponent_pieces) & horizontal_mask;
         let left_side = occupied_horizontal - (*piece * 2);
-        let right_side = ((occupied_horizontal & horizontal_mask).reverse() - (piece.reverse() * 2)).reverse();
+        let right_side = (occupied_horizontal.reverse() - (piece.reverse() * 2)).reverse();
         let movement_with_capture  = (left_side ^ right_side) & horizontal_mask;
-        movement_with_capture & !own_pieces
+        (movement_with_capture & !(own_pieces)) & horizontal_mask
     }
 
 
@@ -47,13 +47,14 @@ impl Rock{
     ///
     /// # Returns
     /// A [`BitBoard`] representing all valid vertical moves for the piece.
-    fn get_vertical_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard{
+    fn get_vertical_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, _color: &Color) -> BitBoard{
         let vertical_mask= BitBoard::from(square.file());
+        let piece = vertical_mask & *piece;
         let occupied_vertical = Self::occupied(own_pieces, opponent_pieces) & vertical_mask;
-        let down = occupied_vertical - (*piece *2);
+        let down = occupied_vertical - (piece *2);
         let up = (occupied_vertical.reverse() - (piece.reverse() * 2)).reverse();
         let movement_with_capture  = (up ^ down) & vertical_mask;
-        movement_with_capture & !own_pieces
+        (movement_with_capture & !(own_pieces)) & vertical_mask
     }
 }
 
@@ -64,14 +65,14 @@ mod tests {
 
     #[test]
     fn test_get_horizontal_moves_unobstructed() {
-        let square = Square::new(File::D, Rank::Two);
-        let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::new(0);
-        let opponent_pieces = BitBoard::new(0);
+        let d2 = Square::new(File::D, Rank::Two);
+        let piece = BitBoard::from(d2);
+        let own_pieces = BitBoard::empty() | piece;
+        let opponent_pieces = BitBoard::empty();
 
-        let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
+        let result = Rock::get_horizontal_moves(&piece, d2, &own_pieces, &opponent_pieces, &Color::White);
 
-        let expected = BitBoard::from(Rank::Two) ^ BitBoard::from(square);
+        let expected = BitBoard::from(Rank::Two) ^ BitBoard::from(d2);
         assert_eq!(result, expected);
     }
 
@@ -82,7 +83,7 @@ mod tests {
         let b2 = Square::new(File::B, Rank::Two);
         let c2 = Square::new(File::C, Rank::Two);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::from(e2) | BitBoard::from(b2);
+        let own_pieces = BitBoard::from(e2) | BitBoard::from(b2) | piece;
         let opponent_pieces = BitBoard::new(0);
 
         let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -99,12 +100,13 @@ mod tests {
         let e2 = Square::new(File::E, Rank::Two);
         let f2 = Square::new(File::F, Rank::Two);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::new(0);
+        let own_pieces = piece;
         let opponent_pieces = BitBoard::from(b2) | BitBoard::from(f2);
 
         let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
 
-        let expected = BitBoard::from(c2) | BitBoard::from(e2) | BitBoard::from(f2);
+        let expected = BitBoard::from(c2) | BitBoard::from(e2) | BitBoard::from(f2) | opponent_pieces;
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -118,7 +120,7 @@ mod tests {
         let f2 = Square::new(File::F, Rank::Two);
         let g2 = Square::new(File::G, Rank::Two);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::new(0);
+        let own_pieces = BitBoard::new(0) | piece;
         let opponent_pieces = BitBoard::new(0);
 
         let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -144,7 +146,7 @@ mod tests {
         let g2 = Square::new(File::G, Rank::Two);
         let h2 = Square::new(File::H, Rank::Two);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::new(0);
+        let own_pieces = BitBoard::new(0) | piece;
         let opponent_pieces = BitBoard::from(h2);
 
         let result = Rock::get_horizontal_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -170,7 +172,7 @@ mod tests {
         let d7 = Square::new(File::D, Rank::Seven);
         let d8 = Square::new(File::D, Rank::Eight);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::new(0);
+        let own_pieces = BitBoard::new(0) | piece;
         let opponent_pieces = BitBoard::new(0);
 
         let result = Rock::get_vertical_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -193,7 +195,7 @@ mod tests {
         let d5 = Square::new(File::D, Rank::Five);
         let d3 = Square::new(File::D, Rank::Three);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::from(d2) | BitBoard::from(d6);
+        let own_pieces = BitBoard::from(d2) | BitBoard::from(d6) | piece;
         let opponent_pieces = BitBoard::new(0);
 
         let result = Rock::get_vertical_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -210,7 +212,7 @@ mod tests {
         let d3 = Square::new(File::D, Rank::Three);
         let d5 = Square::new(File::D, Rank::Five);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::new(0);
+        let own_pieces = BitBoard::new(0) | piece;
         let opponent_pieces = BitBoard::from(d2) | BitBoard::from(d6);
 
         let result = Rock::get_vertical_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -230,7 +232,7 @@ mod tests {
         let d7 = Square::new(File::D, Rank::Seven);
         let d8 = Square::new(File::D, Rank::Eight);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::new(0);
+        let own_pieces = BitBoard::new(0) | piece;
         let opponent_pieces = BitBoard::new(0);
 
         let result = Rock::get_vertical_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -254,7 +256,7 @@ mod tests {
         let d6 = Square::new(File::D, Rank::Six);
         let d7 = Square::new(File::D, Rank::Seven);
         let piece = BitBoard::from(square);
-        let own_pieces = BitBoard::new(0);
+        let own_pieces = BitBoard::new(0) | piece;
         let opponent_pieces = BitBoard::from(d7) | BitBoard::from(d2);
 
         let result = Rock::get_vertical_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -271,7 +273,7 @@ mod tests {
     fn test_get_moves_in_corner_unobstructed() {
         let a1 = Square::new(File::A, Rank::One);
         let piece = BitBoard::from(a1);
-        let own_pieces = BitBoard::new(0);
+        let own_pieces = BitBoard::new(0) | piece;
         let opponent_pieces = BitBoard::new(0);
 
         let result = Rock::get_moves(&piece, a1, &own_pieces, &opponent_pieces, &Color::White);
@@ -312,7 +314,8 @@ mod tests {
             | BitBoard::from(e4)
             | BitBoard::from(f4)
             | BitBoard::from(g4)
-            | BitBoard::from(h4);
+            | BitBoard::from(h4)
+            | piece;
         let opponent_pieces = BitBoard::new(0);
 
         let result = Rock::get_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
@@ -352,12 +355,34 @@ mod tests {
             | BitBoard::from(c4)
             | BitBoard::from(f4)
             | BitBoard::from(g4)
-            | BitBoard::from(h4);
+            | BitBoard::from(h4)
+            | piece;
         let opponent_pieces = BitBoard::from(e4);
 
         let result = Rock::get_moves(&piece, square, &own_pieces, &opponent_pieces, &Color::White);
 
         let expected = BitBoard::from(e4);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_rock_start_position_a1(){
+        let a1 = Square::new(File::A, Rank::One);
+        let a7 = Square::new(File::A, Rank::Seven);
+        let opponent_pieces = BitBoard::from(a7);
+        let own_pieces = BitBoard::new(65406) | BitBoard::from(a1); //BitBoard::from(a2) | BitBoard::from(b1);
+        let result = Rock::get_moves(&BitBoard::from(a1), a1, &own_pieces, &opponent_pieces, &Color::White);
+        let expected = BitBoard::new(0);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_rock_start_position_h1(){
+        let h1 = Square::new(File::H, Rank::One);
+        let opponent_pieces = BitBoard::new(0xffff000000000000);
+        let own_pieces = BitBoard::new(0xffff);
+        let result = Rock::get_moves(&BitBoard::from(h1), h1, &own_pieces, &opponent_pieces, &Color::White);
+        let expected = BitBoard::new(0);
         assert_eq!(result, expected);
     }
 }
