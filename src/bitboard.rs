@@ -24,9 +24,14 @@ impl BitBoard{
         Self(0)
     }
 
-    // Returns a `BitBoard` with its bits reversed.
+    /// Returns a `BitBoard` with its bits reversed.
     pub fn reverse(&self) -> Self {
         BitBoard(self.0.reverse_bits())
+    }
+
+    /// return inner value
+    pub fn value(&self) -> u64 {
+        self.0
     }
 }
 
@@ -156,7 +161,6 @@ impl ops::Sub for BitBoard {
     }
 }
 
-
 impl ops::Mul<u64> for BitBoard {
     type Output = Self;
 
@@ -168,8 +172,6 @@ impl ops::Mul<u64> for BitBoard {
     }
 }
 
-
-// TODO: change test to use square (reversed, sub, mul)
 
 #[cfg(test)]
 mod tests {

@@ -60,6 +60,7 @@ impl Bishop {
     /// - `square`: The [`Square`] for which to calculate the diagonal mask.
     /// # Returns
     /// A [`BitBoard`] containing the mask for the diagonal.
+    #[inline]
     fn get_diagonal_mask(square: Square) -> BitBoard{
         let rank = square.rank() as usize;
         let file = square.file() as usize;
@@ -71,10 +72,10 @@ impl Bishop {
     /// - `square`: The [`Square`] for which to calculate the anti-diagonal mask.
     /// # Returns
     /// A [`BitBoard`] containing the mask for the anti-diagonal.
+    #[inline]
     fn get_anti_diagonal_mask(square: Square) -> BitBoard{
         let rank = square.rank() as usize;
         let file = square.file() as usize;
-        println!("{}, {}", rank, file);
         BitBoard::new(ANTI_DIAGONAL_MASK[file+rank])
     }
 
@@ -87,6 +88,7 @@ impl Bishop {
     /// - `color`: The [`Color`] of the piece (`Color::White` or `Color::Black`).
     /// # Returns
     /// A [`BitBoard`] representing all valid diagonal moves for the piece.
+    #[inline]
     fn get_diagonal_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
         let diagonal_mask = Self::get_diagonal_mask(square);
         let occupied_diagonal = Self::occupied(own_pieces, opponent_pieces) & diagonal_mask;
@@ -104,6 +106,7 @@ impl Bishop {
     /// - `color`: The [`Color`] of the piece (`Color::White` or `Color::Black`).
     /// # Returns
     /// A [`BitBoard`] representing all valid anti-diagonal moves for the piece.
+    #[inline]
     fn get_anti_diagonal_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
         let anti_diagonal_mask = Self::get_anti_diagonal_mask(square);
         let occupied_anti_diagonal = Self::occupied(own_pieces, opponent_pieces) & anti_diagonal_mask;

@@ -4,17 +4,6 @@ use crate::bitboard::BitBoard;
 use super::common::{Color, PossibleMoves};
 
 
-/// Description
-/// - [X] (White) pawn can make a single step forward (UP) for each rank expect 8 rank and only if free.
-/// - [X] (White) pawn can make a double step forward (UP) to only  rank 4 and only if free.
-/// - (White) pawn can capture (LEFT) for all file expect rank 8 to all file expect H and if not empty with enemy piece
-/// - (White) pawn can capture (RIGHT) for all file expect rank 8 to all file expect A and if not empty with enemy piece
-/// - (White) pawn promotion: one square forward or a diagonal capture results in it landing on rank 8
-/// - [X] (Black) pawn can make a single step forward (DOWN) for each rank expect 1 rank and only if free.
-/// - [X] (Black) pawn can make a double step forward (DOWN) to only  rank 5 and only if free.
-/// - (Black) pawn can capture (LEFT) for all file expect rank 1 to all file expect H and if not empty with enemy piece
-/// - (Black) pawn can capture (RIGHT) for all file expect rank 1 to all file expect A and if not empty with enemy piece
-/// - (BLACK) pawn promotion: one square forward or a diagonal capture results in it landing on rank 1
 pub(crate) struct Pawn;
 
 
@@ -23,6 +12,10 @@ impl PossibleMoves for Pawn {
         Self::possible_single_step(piece, own_pieces, opponent_pieces, color)
             | Self::possible_double_step(piece, own_pieces, opponent_pieces, color)
             | Self::possible_capture_step(piece, own_pieces, opponent_pieces, color)
+    }
+
+    fn get_capture(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
+        Self::possible_capture_step(piece, own_pieces, opponent_pieces, color)
     }
 }
 

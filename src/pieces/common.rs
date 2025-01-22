@@ -35,11 +35,28 @@ pub(crate) trait PossibleMoves{
     ///   - For pieces with complex movement (e.g., sliding pieces), valid moves account for blockers.
     fn get_moves(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard;
 
+    /// Computes all possible capture moves for a piece located on the given square.
+    ///
+    /// # Parameters
+    /// - `piece`: A [`BitBoard`] representing the single position of the piece.
+    /// - `square`: The [`Square`] where the piece is located.
+    /// - `own_pieces`: A [`BitBoard`] representing the positions of all friendly pieces.
+    /// - `opponent_pieces`: A [`BitBoard`] representing the positions of all opponent pieces.
+    /// - `color`: The [`Color`] of the piece (`Color::White` or `Color::Black`).
+    ///
+    /// # Returns
+    /// A [`BitBoard`] representing all valid capture moves for the piece.
+    fn get_capture(piece: &BitBoard, square: Square, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard{
+        Self::get_moves(piece, square, own_pieces, opponent_pieces, color)
+    }
+
+    /// Computes a `BitBoard` representing all occupied squares on the chessboard.
     #[inline]
     fn occupied(own_pieces: &BitBoard, opponent_pieces: &BitBoard) -> BitBoard {
         own_pieces | opponent_pieces
     }
 
+    /// Computes a `BitBoard` representing all empty squares on the chessboard.
     #[inline]
     fn empty(own_pieces: &BitBoard, opponent_pieces: &BitBoard) -> BitBoard {
         !(Self::occupied(own_pieces, opponent_pieces))
