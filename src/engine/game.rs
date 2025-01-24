@@ -1,11 +1,13 @@
 use strum::IntoEnumIterator;
 use crate::bitboard::BitBoard;
+use crate::gui::cmd::CommandPromptGUI;
 use crate::pieces;
 use crate::pieces::common::Color;
 use crate::pieces::Piece;
 use crate::square::{File, Rank, Square};
 
 pub(crate) struct Game {
+    gui: CommandPromptGUI,
     pieces_location: [[BitBoard; 6]; 2],
     pieces_square: [[Vec<Square>; 6]; 2],
     pieces_capture_movement: [[BitBoard; 6]; 2],
@@ -19,7 +21,9 @@ impl Game {
         let pieces_capture_movement = [[BitBoard::empty(); 6]; 2];
         let pieces_movement = [[BitBoard::empty(); 6]; 2];
         let pieces_square = Self::start_position();
+        let gui = CommandPromptGUI::new();
         let mut game = Self {
+            gui,
             pieces_location,
             pieces_movement,
             pieces_capture_movement,
@@ -29,118 +33,118 @@ impl Game {
         game
     }
 
+    pub fn start(&mut self){
+        let board_position = self.get_all_position();
+        self.gui.render(&board_position, Color::White);
+        self.gui.wait_and_process_event();
+    }
 
-    // pub fn move_piece(
-    //     &mut self,
-    //     color: Color,
-    //     piece: usize,
-    //     from: Square,
-    //     to: Square,
-    // ) -> Result<(), String> {
-    //     let side_idx = usize::from(color);
-    //     let from_bitboard = BitBoard::from(from);
-    //     let to_bitboard = BitBoard::from(to);
-    //     let legal_moves_for_piece = self.pieces_movement[side_idx][piece] | self.pieces_capture_movement[side_idx][piece];
-    //     let is_piece_in_from_location = !(self.pieces_location[side_idx][piece] & from_bitboard).is_empty();
-    //     let is_move_is_acceptable = !(legal_moves_for_piece & to_bitboard).is_empty();
-    //
-    //     if !is_piece_in_from_location {
-    //         return Err(format!("No piece of type {} at {:?}", piece, from));
-    //     }
-    //     if !is_move_is_acceptable{
-    //         return Err(format!("Movement is not possible for piece {}", piece));
-    //     }
-    //     self.compute_own_pieces(side_idx);
-    //     Ok(())
-    // }
+
+    /// Check if move is possible
+    /// Firstly check if move inside the move list. If do try move and make sure doesn't cause checkmate
+    pub fn check_move(&self, from: Square, to: Square, piece: Piece, color: Color) -> Result<(), String> {
+        let piece_idx = usize::from(piece.clone());
+        let side_idx = usize::from(color);
+        let from_bitboard = BitBoard::from(from);
+        let to_bitboard = BitBoard::from(to);
+        let legal_moves_for_piece = self.pieces_movement[side_idx][piece_idx] | self.pieces_capture_movement[side_idx][piece_idx];
+        let is_piece_in_from_location = !(self.pieces_location[side_idx][piece_idx] & from_bitboard).is_empty();
+        let is_piece_in_to_location = !(self.pieces_location[side_idx][piece_idx] & to_bitboard).is_empty();
+        if !is_piece_in_from_location | !is_piece_in_to_location{
+            return Err(format!("No piece of type {:?} from {:?}, to {:?}", piece, from, to));
+        }
+        let is_inside_legal_moves = !(legal_moves_for_piece & to_bitboard).is_empty();
+        if !is_inside_legal_moves{
+            return Err(format!("Move({:?}, {:?} -> {:?}) not inside the legal move set", piece, from, to));
+        }
+        Ok(())
+    }
+
+    fn update_state(&mut self, from: Square, to: Square, piece: Piece, side: Color){
+        let side_idx = usize::from(side);
+        let piece_idx = usize::from(piece);
+        self.pieces_location[side_idx][piece_idx] ^= BitBoard::from(from);
+        self.pieces_location[side_idx][piece_idx] |= BitBoard::from(to);
+        self.pieces_square[side_idx][piece_idx] = self.pieces_square[piece_idx][piece_idx]
+            .iter()
+            .map(|x| if *x == from { to } else { *x })
+            .collect();
+        self.compute_attack_threat_and_move();
+    }
+
 }
 
 impl Game{
     fn start_position_mask() -> [[BitBoard; 6]; 2]{
-        // TODO: fix to include all
-        [
-            [
-                BitBoard::new(0xff00), // pawn
-                BitBoard::new(0x42), // knight
-                BitBoard::new(0x24), // bishop
-                BitBoard::new(0x81), // rock
-                BitBoard::new(0x8), // queen
-                BitBoard::new(0x10), // king
-            ],
-            [
-                BitBoard::new(0xff000000000000),
-                BitBoard::new(0x4200000000000000),
-                BitBoard::new(0x2400000000000000),
-                BitBoard::new(0x8100000000000000),
-                BitBoard::new(0x800000000000000),
-                BitBoard::new(0x1000000000000000),
-            ]
-        ]
+        let mut start_position = [[BitBoard::empty(); 6]; 2];
+            let white_side = usize::from(Color::White);
+            let black_side = usize::from(Color::Black);
+            for piece in Piece::iter(){
+                start_position[white_side][usize::from(piece)] |= match piece {
+                    Piece::Pawn => BitBoard::new(0xff00),
+                    Piece::Knight => BitBoard::new(0xff00),
+                    Piece::Rock => BitBoard::new(0x81),
+                    Piece::Bishop => BitBoard::new(0x24),
+                    Piece::Queen => BitBoard::new(0x8),
+                    Piece::King => BitBoard::new(0x10)
+                };
+                start_position[black_side][usize::from(piece)] |= match piece {
+                    Piece::Pawn => BitBoard::new(0xff000000000000),
+                    Piece::Knight => BitBoard::new(0x4200000000000000),
+                    Piece::Rock => BitBoard::new(0x8100000000000000),
+                    Piece::Bishop => BitBoard::new(0x2400000000000000),
+                    Piece::Queen => BitBoard::new(0x800000000000000),
+                    Piece::King => BitBoard::new(0x1000000000000000)
+                };
+            }
+        start_position
     }
 
     fn start_position() -> [[Vec<Square>; 6]; 2]{
-        [
-            [
-                vec![
-                    Square::new(File::A, Rank::Two),
-                    Square::new(File::B, Rank::Two),
-                    Square::new(File::C, Rank::Two),
-                    Square::new(File::D, Rank::Two),
-                    Square::new(File::E, Rank::Two),
-                    Square::new(File::F, Rank::Two),
-                    Square::new(File::G, Rank::Two),
-                    Square::new(File::H, Rank::Two),
-                ],
-                vec![
-                    Square::new(File::B, Rank::One),
-                    Square::new(File::G, Rank::One),
-                ],
-                vec![
-                    Square::new(File::C, Rank::One),
-                    Square::new(File::F, Rank::One),
-                ],
-                vec![
-                    Square::new(File::A, Rank::One),
-                    Square::new(File::H, Rank::One),
-                ],
-                vec![
-                    Square::new(File::D, Rank::One),
-                ],
-                vec![
-                    Square::new(File::E, Rank::One),
-                ]
-            ],
-            [
-                vec![
-                    Square::new(File::A, Rank::Seven),
-                    Square::new(File::B, Rank::Seven),
-                    Square::new(File::C, Rank::Seven),
-                    Square::new(File::D, Rank::Seven),
-                    Square::new(File::E, Rank::Seven),
-                    Square::new(File::F, Rank::Seven),
-                    Square::new(File::G, Rank::Seven),
-                    Square::new(File::H, Rank::Seven),
-                ],
-                vec![
-                    Square::new(File::B, Rank::Eight),
-                    Square::new(File::G, Rank::Eight),
-                ],
-                vec![
-                    Square::new(File::C, Rank::Eight),
-                    Square::new(File::F, Rank::Eight),
-                ],
-                vec![
-                    Square::new(File::A, Rank::Eight),
-                    Square::new(File::H, Rank::Eight),
-                ],
-                vec![
-                    Square::new(File::D, Rank::Eight),
-                ],
-                vec![
-                    Square::new(File::E, Rank::Eight),
-                ]
-            ]
-        ]
+        let mut start_position: [[Vec<Square>; 6]; 2] =
+            std::array::from_fn(|_| std::array::from_fn(|_| Vec::new()));
+        for piece in Piece::iter(){
+            for side in Color::iter(){
+                let rank = match (side, piece) {
+                    (Color::White, Piece::Pawn) => Rank::Two,
+                    (Color::Black, Piece::Pawn) => Rank::Seven,
+                    (Color::White, _) => Rank::One,
+                    (Color::Black, _) => Rank::Eight,
+                };
+                start_position[usize::from(side)][usize::from(piece)] = match piece {
+                    Piece::Pawn => vec![
+                        Square::new(File::A, rank),
+                        Square::new(File::B, rank),
+                        Square::new(File::C, rank),
+                        Square::new(File::D, rank),
+                        Square::new(File::E, rank),
+                        Square::new(File::F, rank),
+                        Square::new(File::G, rank),
+                        Square::new(File::H, rank),
+                    ],
+                    Piece::Knight => vec![
+                        Square::new(File::B, rank),
+                        Square::new(File::G, rank),
+                    ],
+                    Piece::Rock => vec![
+                        Square::new(File::A, rank),
+                        Square::new(File::H, rank),
+                    ],
+                    Piece::Bishop => vec![
+                        Square::new(File::C, rank),
+                        Square::new(File::F, rank),
+                    ],
+                    Piece::Queen => vec![
+                        Square::new(File::D, rank),
+                    ],
+                    Piece::King => vec![
+                        Square::new(File::E, rank),
+                    ]
+                };
+            }
+
+        }
+        start_position
     }
 
     fn combine(board: &[BitBoard; 6]) -> BitBoard{
@@ -187,6 +191,18 @@ impl Game{
         !(attack & *opponent_king).is_empty()
     }
 
+    fn get_all_position(&self) -> [Option<Piece>; 64]{
+        let mut board = [None; 64];
+        for side in Color::iter(){
+            for piece in Piece::iter(){
+                for square in &self.pieces_square[usize::from(side)][usize::from(piece)]{
+                    let idx = usize::from(*square);
+                    board[idx] = Some(piece);
+                }
+            }
+        }
+        board
+    }
 }
 
 #[cfg(test)]
@@ -227,15 +243,39 @@ mod tests {
     }
 
     #[test]
-    fn test_king_check_rock() {
-
+    fn test_king_checked() {
         let mut piece_capture = [BitBoard::empty(); 6];
-        piece_capture[usize::from(Piece::Rock)] = BitBoard::new(0x80);
+        piece_capture[usize::from(Piece::Rock)] = BitBoard::new(0xff);
         let king = BitBoard::new(0x8);
-
         let result = Game::is_checked(&king, &piece_capture);
-        println!("{}", result)
+        assert!(result);
     }
+
+    #[test]
+    fn test_king_not_checked() {
+        let mut piece_capture = [BitBoard::empty(); 6];
+        piece_capture[usize::from(Piece::Rock)] = BitBoard::new(0xff);
+        piece_capture[usize::from(Piece::Bishop)] = BitBoard::new(0x8040201008040201);
+        let king = BitBoard::new(0x800000000000000);
+        let result = Game::is_checked(&king, &piece_capture);
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_update_state_move_piece_success() {
+        let mut game = Game::new();
+
+        let from = Square::new(File::A, Rank::Two);
+        let to = Square::new(File::A, Rank::Three);
+        let piece = Piece::Pawn;
+        let side = Color::White;
+
+        game.update_state(from, to, piece, side);
+        let expected = BitBoard::from(to);
+        let res = expected & game.pieces_location[0][0];
+        assert!(!res.is_empty());
+    }
+
 }
 
 

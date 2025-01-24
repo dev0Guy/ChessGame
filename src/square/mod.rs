@@ -11,7 +11,7 @@ use crate::bitboard::BitBoard;
 /// A `Square` is an abstraction that combines a [`File`] and a [`Rank`] to represent a single
 /// chessboard position. It is useful for mapping board positions to bitboards or other
 /// representations.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub(crate) struct Square {
     /// The file (column) of the square, such as `File::A` or `File::H`.
     file: File,
@@ -50,3 +50,24 @@ impl From<Square> for BitBoard {
     }
 }
 
+impl TryFrom<String> for Square {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.chars().collect::<Vec<char>>().as_slice(){
+            [first, second] => {
+                let file = File::try_from(*first)?;
+                let rank = Rank::try_from(*second)?;
+                Ok(Self::new(file, rank))
+            }
+            _ => Err(())
+        }
+    }
+}
+
+impl From<Square> for usize{
+    fn from(value: Square) -> Self {
+        let [file, rank] = [usize::from(value.file), usize::from(value.rank)];
+        rank * 8 + file
+    }
+}

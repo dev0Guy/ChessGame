@@ -32,3 +32,37 @@ impl From<Rank> for BitBoard {
         }
     }
 }
+
+
+impl TryFrom<char> for Rank {
+    type Error = ();
+
+    fn try_from(rank: char) -> Result<Self, Self::Error> {
+        match rank.to_digit(10) {
+            Some(1) => Ok(Rank::One),
+            Some(2) => Ok(Rank::Two),
+            Some(3) => Ok(Rank::Three),
+            Some(4) => Ok(Rank::Four),
+            Some(5) => Ok(Rank::Five),
+            Some(6) => Ok(Rank::Six),
+            Some(7) => Ok(Rank::Seven),
+            Some(8) => Ok(Rank::Eight),
+            _ => Err(())
+        }
+    }
+}
+
+impl From<Rank> for usize {
+    fn from(rank: Rank) -> Self {
+        match rank {
+            Rank::One => 0,
+            Rank::Two => 1,
+            Rank::Three => 2,
+            Rank::Four => 3,
+            Rank::Five => 4,
+            Rank::Six => 5,
+            Rank::Seven => 6,
+            Rank::Eight => 7,
+        }
+    }
+}

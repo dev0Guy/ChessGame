@@ -183,6 +183,12 @@ impl<'a> ops::BitOrAssign<&'a BitBoard> for BitBoard {
     }
 }
 
+impl ops::BitXorAssign for BitBoard{
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

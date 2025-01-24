@@ -31,3 +31,35 @@ impl From<File> for BitBoard {
         }
     }
 }
+
+impl TryFrom<char> for File {
+    type Error = ();
+
+    fn try_from(file: char) -> Result<Self, Self::Error> {
+        match file {
+            'a'|'A' => Ok(File::A),
+            'b'|'B' => Ok(File::B),
+            'c'|'C' => Ok(File::C),
+            'd'|'D' => Ok(File::D),
+            'e'|'E' => Ok(File::E),
+            'f'|'F' => Ok(File::F),
+            'g'|'G' => Ok(File::G),
+            _ => Err(())
+        }
+    }
+}
+
+impl From<File> for usize{
+    fn from(value: File) -> Self {
+        match value {
+            File::A => 0,
+            File::B => 1,
+            File::C => 2,
+            File::D => 3,
+            File::E => 4,
+            File::F => 5,
+            File::G => 6,
+            File::H => 7,
+        }
+    }
+}
