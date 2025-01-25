@@ -30,10 +30,16 @@ impl BitBoard{
         BitBoard(self.0.reverse_bits())
     }
 
+    /// Checks if the `BitBoard` is empty.
+    /// # Returns
+    ///
+    /// - `true` if the `BitBoard` has no set bits (i.e., its internal value is `0`).
+    /// - `false` if the `BitBoard` contains any set bits.
     pub fn is_empty(&self) -> bool{
         self.0 == 0
     }
 
+    /// Clears all bits in the `BitBoard`, effectively resetting it to an empty state.
     pub fn clear(&mut self) {
         self.0 = 0;
     }
