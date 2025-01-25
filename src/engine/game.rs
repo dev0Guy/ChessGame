@@ -408,7 +408,8 @@ impl Game{
         let king_position = self.pieces_location[side_idx][usize::from(Piece::King)];
         let mut attacking: Vec<(Piece, BitBoard)> = Vec::new();
         for piece in Piece::iter(){
-            let attacking_board = self.pieces_capture_movement[opponent_side_idx][usize::from(piece)] & king_position;
+            let piece_idx = usize::from(piece);
+            let attacking_board = self.pieces_location[opponent_side_idx][piece_idx] | self.pieces_capture_movement[opponent_side_idx][piece_idx];
             if !attacking_board.is_empty(){
                 attacking.push((piece, attacking_board));
             }
