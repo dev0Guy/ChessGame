@@ -17,11 +17,52 @@ pub(crate) struct Game {
     pieces_square: [[Vec<Square>; 6]; 2],
     pieces_capture_movement: [[BitBoard; 6]; 2],
     pieces_movement: [[BitBoard; 6]; 2],
+    castling_rights: [[bool; 2]; 2],
     turn: Color
 }
 
-// TODO: add castle action
 impl Game {
+
+    /// Validates if a castling move is legal based on the current game state.
+    ///
+    /// # Arguments
+    /// - `from`: The starting `Square` of the king.
+    /// - `to`: The destination `Square` for the castling move (either king_side or queenside).
+    ///
+    /// # Returns
+    /// - `Ok(Piece::King)`: If the castling move is valid.
+    /// - `Err(String)`: If the castling move is invalid, returns an error message explaining the reason.
+    fn validate_castling(&self, from: Square, to: Square) -> Result<Piece, String> {
+        let rank = from.rank();
+        let side_idx = usize::from(self.turn);
+        let opponent_side_idx = usize::from(self.turn.opposite());
+        let king_side = to.file() == File::G;
+        let queen_side = to.file() == File::C;
+
+        if king_side && !self.castling_rights[side_idx][0] {
+            return Err("King-side castling is not allowed.".to_string());
+        }
+        if queen_side && !self.castling_rights[side_idx][1] {
+            return Err("Queen-side castling is not allowed.".to_string());
+        }
+        let square_to_validate = if king_side{
+            BitBoard::new(0x6000000000000060)
+        } else {
+            BitBoard::new(0xe0000000000000e)
+        } & BitBoard::from(rank);
+        let pieces = Self::combine(&self.pieces_location[side_idx]) | Self::combine(&self.pieces_location[opponent_side_idx]);
+        let attacked = Self::combine(&self.pieces_capture_movement[opponent_side_idx]);
+        let is_castle_blocked = !(pieces & square_to_validate).is_empty();
+        if is_castle_blocked{
+            return Err("Castle blocked.".to_string());
+        }
+        let is_castle_attacked = !(attacked & square_to_validate).is_empty();
+        if is_castle_attacked{
+            return Err("Castle attacked.".to_string());
+        }
+        Ok(Piece::King)
+    }
+
     /// Validates whether a move from one square to another is legal based on the current game state.
     ///
     /// # Arguments
@@ -37,12 +78,12 @@ impl Game {
         match piece {
             None =>  Err(format!("Piece doesn't exist in square {:?}", from)),
             Some(piece) => {
+                if piece == Piece::King && (to == Square::new(File::G, from.rank()) || to == Square::new(File::C, from.rank())) {
+                    return self.validate_castling(from, to);
+                }
                 let (legal_movement, legal_capture) = self.compute_attack_threat_and_move_to_given(from, piece, self.turn);
                 let is_inside_legal_moves = !((legal_movement | legal_capture) & bit_to).is_empty();
                 if !is_inside_legal_moves{
-                    println!("legal_movement {:?}", legal_movement);
-                    println!("legal_capture {:?}", legal_capture);
-                    println!("bit_to {:?}", bit_to);
                     Err(format!("{:?} in square {:?} is not inside legal moves.", piece, from))
                 } else {
                     Ok(piece)
@@ -61,12 +102,14 @@ impl Game {
         let pieces_movement = [[BitBoard::empty(); 6]; 2];
         let pieces_square = Self::start_position();
         let gui = CommandPromptGUI::new();
+        let castling_rights = [[true; 2]; 2];
         let mut game = Self {
             gui,
             pieces_location,
             pieces_movement,
             pieces_capture_movement,
             pieces_square,
+            castling_rights,
             turn: Color::White
         };
         game.compute_attack_threat_and_move();
@@ -88,9 +131,11 @@ impl Game {
                     Ok(piece) => {
                         match self.try_update_state(from, to, piece, self.turn) {
                             Err(err) => println!("{}", err),
-                            Ok(()) => {
-                                board_position[usize::from(from)] = None;
-                                board_position[usize::from(to)] = Some((piece, self.turn));
+                            Ok(values) => {
+                                for (_from, _to) in values {
+                                    board_position[usize::from(from)] = None;
+                                    board_position[usize::from(to)] = Some((piece, self.turn));
+                                }
                                 self.turn = self.turn.opposite();
                             }
                         }
@@ -111,13 +156,28 @@ impl Game {
     ///
     /// - `Ok(())`: If the state is successfully updated and the move is valid.
     /// - `Err(String)`: If the move leaves the player's king in check, an error is returned with a descriptive message.
-    fn try_update_state(&mut self, from: Square, to: Square, piece: Piece, side: Color) -> Result<(), String> {
+    fn try_update_state(&mut self, from: Square, to: Square, piece: Piece, side: Color) -> Result<Vec<(Square, Square)>, String> {
         let opponent_side = side.opposite();
         let side_idx = usize::from(side);
         let opponent_side_idx = usize::from(opponent_side);
         let piece_idx = usize::from(piece);
         let opponent_location = self.get_piece_by_location(opponent_side, to);
+        let mut movement = vec![(from, to)];
         let game = self.clone();
+        let is_castling_move = piece == Piece::King && (to == Square::new(File::G, from.rank()) || to == Square::new(File::C, from.rank()));
+        if is_castling_move{
+            let is_king_side = to.file() == File::G;
+            let rook_from = if is_king_side { Square::new(File::H, from.rank()) } else { Square::new(File::A, from.rank()) };
+            let rook_to = if is_king_side { Square::new(File::F, from.rank()) } else { Square::new(File::D, from.rank()) };
+            let set_right_idx = if is_king_side {0} else {1};
+            self.castling_rights[side_idx][set_right_idx] = false;
+            let rook_piece_idx = usize::from(Piece::Rock);
+            self.pieces_location[side_idx][rook_piece_idx] ^= BitBoard::from(rook_from);
+            self.pieces_location[side_idx][rook_piece_idx] |= BitBoard::from(rook_to);
+            self.pieces_square[side_idx][rook_piece_idx].retain(|&x| x != rook_from);
+            self.pieces_square[side_idx][rook_piece_idx].push(rook_to);
+            movement.push((rook_from, rook_to));
+        }
         // update position mask
         self.pieces_location[side_idx][piece_idx] ^= BitBoard::from(from);
         self.pieces_location[side_idx][piece_idx] |= BitBoard::from(to);
@@ -130,17 +190,17 @@ impl Game {
             }
         }
         // change square
-        self.pieces_square[side_idx][piece_idx] = self.pieces_square[side_idx][piece_idx]
-            .iter()
-            .map(|x| if *x == from { to } else { *x })
-            .collect();
+        self.pieces_square[side_idx][piece_idx].retain(|&x| x != from);
+        self.pieces_square[side_idx][piece_idx].push(to);
+        // TODO: recheck pawn movement
         // get new attacks
         self.compute_attack_threat_and_move();
         if self.is_checked(){
             self.set_from(game);
             return Err(format!("After move king is still on check {:?}", from));
         }
-        Ok(())
+        // TODO: update castle rights
+        Ok(movement)
     }
 }
 
@@ -427,7 +487,116 @@ impl Clone for Game{
             pieces_movement: self.pieces_movement.clone(),
             pieces_location: self.pieces_location.clone(),
             pieces_capture_movement: self.pieces_capture_movement.clone(),
+            castling_rights: self.castling_rights.clone(),
             gui: CommandPromptGUI::new()
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::square::{File, Rank, Square};
+    use crate::pieces::Piece;
+    use crate::pieces::Piece::Pawn;
+
+    #[test]
+    fn test_validate_castling_king_side_allowed() {
+        let mut game = Game::new();
+
+        // Ensure castling rights are allowed
+        game.castling_rights[usize::from(Color::White)] = [true, true];
+
+        game.pieces_location[usize::from(Color::White)] = [BitBoard::empty(); 6];
+
+        // Ensure no squares are under attack
+        game.pieces_capture_movement[usize::from(Color::Black)] = [BitBoard::empty(); 6];
+
+        // Test king_side castling
+        let from = Square::new(File::E, Rank::One);
+        let to = Square::new(File::G, Rank::One);
+        let result = game.validate_castling(from, to);
+        assert!(result.is_ok(), "king_side castling should be allowed.");
+    }
+
+    #[test]
+    fn test_validate_castling_king_side_piece_between() {
+        let mut game = Game::new();
+
+        game.castling_rights[usize::from(Color::White)] = [true, true];
+        game.pieces_location[usize::from(Color::White)] = [BitBoard::empty(); 6];
+        game.pieces_location[usize::from(Color::White)][usize::from(Piece::Knight)] |= BitBoard::new(0x42);
+        game.pieces_capture_movement[usize::from(Color::Black)] = [BitBoard::empty(); 6];
+
+        let from = Square::new(File::E, Rank::One);
+        let to = Square::new(File::G, Rank::One);
+        let result = game.validate_castling(from, to);
+        assert!(!result.is_ok(), "king_side castling shouldn't be allowed.");
+    }
+
+    #[test]
+    fn test_validate_castling_queen_side_piece_between() {
+        let mut game = Game::new();
+
+        game.castling_rights[usize::from(Color::White)] = [true, true];
+        game.pieces_location[usize::from(Color::White)] = [BitBoard::empty(); 6];
+        game.pieces_location[usize::from(Color::White)][usize::from(Piece::Knight)] |= BitBoard::new(0x42);
+        game.pieces_capture_movement[usize::from(Color::Black)] = [BitBoard::empty(); 6];
+
+        let from = Square::new(File::E, Rank::One);
+        let to = Square::new(File::C, Rank::One);
+        let result = game.validate_castling(from, to);
+        assert!(!result.is_ok(), "king_side castling shouldn't be allowed.");
+    }
+
+    #[test]
+    fn test_validate_castling_king_side_piece_between_black() {
+        let mut game = Game::new();
+
+        game.turn = Color::Black;
+        game.castling_rights[usize::from(Color::Black)] = [true, true];
+        game.pieces_location[usize::from(Color::Black)] = [BitBoard::empty(); 6];
+        game.pieces_location[usize::from(Color::Black)][usize::from(Piece::Knight)] |= BitBoard::new(0x4200000000000042);
+        game.pieces_capture_movement[usize::from(Color::White)] = [BitBoard::empty(); 6];
+
+        let from = Square::new(File::E, Rank::Eight);
+        let to = Square::new(File::G, Rank::Eight);
+        let result = game.validate_castling(from, to);
+        assert!(!result.is_ok(), "king_side castling shouldn't be allowed.");
+    }
+
+    #[test]
+    fn test_validate_castling_king_side_attacked_black() {
+        let mut game = Game::new();
+
+        game.turn = Color::Black;
+        game.castling_rights[usize::from(Color::Black)] = [true, true];
+        game.pieces_location[usize::from(Color::Black)] = [BitBoard::empty(); 6];
+        game.pieces_capture_movement[usize::from(Color::White)] = [BitBoard::empty(); 6];
+        game.pieces_capture_movement[usize::from(Color::White)][usize::from(Pawn)] |= BitBoard::new(0x3000000000000042);
+
+        let from = Square::new(File::E, Rank::Eight);
+        let to = Square::new(File::G, Rank::Eight);
+        let result = game.validate_castling(from, to);
+        assert!(!result.is_ok(), "king_side castling shouldn't be allowed.");
+    }
+
+    #[test]
+    fn test_validate_castling_king_side_attacked_no_effect_black() {
+        let mut game = Game::new();
+        game.turn = Color::Black;
+        game.castling_rights[usize::from(Color::Black)] = [true, true];
+        game.pieces_location[usize::from(Color::Black)] = [BitBoard::empty(); 6];
+        game.pieces_capture_movement[usize::from(Color::White)] = [BitBoard::empty(); 6];
+        game.pieces_capture_movement[usize::from(Color::White)][usize::from(Pawn)] |= BitBoard::new(0x700000000000042);
+
+        let from = Square::new(File::E, Rank::Eight);
+        let to = Square::new(File::G, Rank::Eight);
+        let result = game.validate_castling(from, to);
+        assert!(result.is_ok(), "king_side castling shouldn be allowed.");
+    }
+
+
+}
+
