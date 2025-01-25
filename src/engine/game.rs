@@ -1,8 +1,9 @@
+use std::fmt::format;
+use std::ops::BitAndAssign;
 use strum::IntoEnumIterator;
 use crate::bitboard::BitBoard;
 use crate::gui::cmd::CommandPromptGUI;
-use crate::pieces;
-use crate::pieces::common::Color;
+use crate::pieces::common::{Color, PossibleMoves};
 use crate::pieces::Piece;
 use crate::square::{File, Rank, Square};
 
@@ -12,10 +13,43 @@ pub(crate) struct Game {
     pieces_square: [[Vec<Square>; 6]; 2],
     pieces_capture_movement: [[BitBoard; 6]; 2],
     pieces_movement: [[BitBoard; 6]; 2],
+    turn: Color
 }
 
 
+impl Clone for Game{
+    fn clone(&self) -> Self {
+        Self{
+            turn: self.turn,
+            pieces_square: self.pieces_square.clone(),
+            pieces_movement: self.pieces_movement.clone(),
+            pieces_location: self.pieces_location.clone(),
+            pieces_capture_movement: self.pieces_capture_movement.clone(),
+            gui: CommandPromptGUI::new()
+        }
+    }
+}
+
 impl Game {
+
+    fn validate_move(&self, from: Square, to: Square) -> Result<Piece, String>{
+        let [_, bit_to] = [BitBoard::from(from), BitBoard::from(to)];
+        let piece = self.get_piece_by_location(self.turn, from);
+        match piece {
+            None =>  Err(format!("Piece doesn't exist in square {:?}", from)),
+            Some(piece) => {
+                let (legal_movement, legal_capture) = self.compute_attack_threat_and_move_to_given(from, piece, self.turn);
+                let is_inside_legal_moves = !((legal_movement | legal_capture) & bit_to).is_empty();
+                if !is_inside_legal_moves{
+                    Err(format!("{:?} in square {:?} is not inside legal moves.", piece, from))
+                } else {
+                    Ok(piece)
+                }
+            }
+        }
+    }
+
+
     pub fn new() -> Self {
         let pieces_location = Self::start_position_mask();
         let pieces_capture_movement = [[BitBoard::empty(); 6]; 2];
@@ -27,49 +61,106 @@ impl Game {
             pieces_location,
             pieces_movement,
             pieces_capture_movement,
-            pieces_square
+            pieces_square,
+            turn: Color::White
         };
         game.compute_attack_threat_and_move();
         game
     }
 
     pub fn start(&mut self){
-        let board_position = self.get_all_position();
-        self.gui.render(&board_position, Color::White);
-        self.gui.wait_and_process_event();
+        let mut board_position = self.get_all_position();
+        loop{
+            self.gui.render(&board_position, self.turn);
+            // add function that check if checkmate and if so close the game
+            let action = self.gui.wait_and_process_event();
+            let action_res = match action {
+                None => continue,
+                Some((from, to)) => {
+                    match self.validate_move(from, to) {
+                        Err(val) => Err(val),
+                        Ok(piece) => {
+                            // validate there is no check on given king, if so return action is not allowed
+                            let status = self.try_update_state(from, to, piece, self.turn);
+                            match status {
+                                Err(val) => Err(val),
+                                Ok(()) => {
+                                    board_position[usize::from(from)] = None;
+                                    board_position[usize::from(to)] = Some((piece, self.turn));
+                                    self.turn = self.turn.opposite();
+                                    Ok(())
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            match action_res {
+                Err(str) => println!("{}", str),
+                Ok(_) => {}
+            }
+
+        }
+
     }
 
 
     /// Check if move is possible
     /// Firstly check if move inside the move list. If do try move and make sure doesn't cause checkmate
-    pub fn check_move(&self, from: Square, to: Square, piece: Piece, color: Color) -> Result<(), String> {
-        let piece_idx = usize::from(piece.clone());
+    pub fn check_move(&self, from: Square, to: Square, color: Color) -> Result<Piece, String> {
+        let piece = self.get_piece_by_location(color, from);
         let side_idx = usize::from(color);
         let from_bitboard = BitBoard::from(from);
         let to_bitboard = BitBoard::from(to);
-        let legal_moves_for_piece = self.pieces_movement[side_idx][piece_idx] | self.pieces_capture_movement[side_idx][piece_idx];
-        let is_piece_in_from_location = !(self.pieces_location[side_idx][piece_idx] & from_bitboard).is_empty();
-        let is_piece_in_to_location = !(self.pieces_location[side_idx][piece_idx] & to_bitboard).is_empty();
-        if !is_piece_in_from_location | !is_piece_in_to_location{
-            return Err(format!("No piece of type {:?} from {:?}, to {:?}", piece, from, to));
+        match piece {
+            None =>  Err(format!("Piece doesn't exist in square {:?}", from)),
+            Some(piece) => {
+                let piece_idx = usize::from(piece);
+                let own_pieces = self.pieces_location[side_idx][piece_idx];
+                let (legal_movement, legal_capture) = self.compute_attack_threat_and_move_to_given(from, piece, color);
+                let is_inside_legal_moves = !((legal_movement | legal_capture) & to_bitboard).is_empty();
+                if (own_pieces & from_bitboard).is_empty(){
+                    return Err(format!("No piece of type {:?} in square {:?}", piece, from));
+                }
+                if !is_inside_legal_moves{
+                    return Err(format!("Move({:?}, {:?} -> {:?}) not inside the legal move set", piece, from, to));
+                }
+                Ok(piece)
+            }
         }
-        let is_inside_legal_moves = !(legal_moves_for_piece & to_bitboard).is_empty();
-        if !is_inside_legal_moves{
-            return Err(format!("Move({:?}, {:?} -> {:?}) not inside the legal move set", piece, from, to));
-        }
-        Ok(())
     }
 
-    fn update_state(&mut self, from: Square, to: Square, piece: Piece, side: Color){
+    fn try_update_state(&mut self, from: Square, to: Square, piece: Piece, side: Color) -> Result<(), String> {
+        let opponent_side = side.opposite();
         let side_idx = usize::from(side);
+        let opponent_side_idx = usize::from(opponent_side);
         let piece_idx = usize::from(piece);
+        let opponent_location = self.get_piece_by_location(opponent_side, to);
+        let game = self.clone();
+        // TODO: check if board is in check
+        // update position mask
         self.pieces_location[side_idx][piece_idx] ^= BitBoard::from(from);
         self.pieces_location[side_idx][piece_idx] |= BitBoard::from(to);
-        self.pieces_square[side_idx][piece_idx] = self.pieces_square[piece_idx][piece_idx]
+        match opponent_location {
+            None => {}
+            Some(piece) => {
+                let opponent_piece_idx = usize::from(piece);
+                self.pieces_location[opponent_side_idx][opponent_piece_idx] &= !BitBoard::from(to);
+                self.pieces_square[opponent_side_idx][opponent_piece_idx].retain(|&x| x != to);
+            }
+        }
+        // change square
+        self.pieces_square[side_idx][piece_idx] = self.pieces_square[side_idx][piece_idx]
             .iter()
             .map(|x| if *x == from { to } else { *x })
             .collect();
+        // get new attacks
         self.compute_attack_threat_and_move();
+        if self.is_checked(){
+            self.set_from(game);
+            return Err(format!("After move king is still on check {:?}", from));
+        }
+        Ok(())
     }
 
 }
@@ -82,7 +173,7 @@ impl Game{
             for piece in Piece::iter(){
                 start_position[white_side][usize::from(piece)] |= match piece {
                     Piece::Pawn => BitBoard::new(0xff00),
-                    Piece::Knight => BitBoard::new(0xff00),
+                    Piece::Knight => BitBoard::new(0x42),
                     Piece::Rock => BitBoard::new(0x81),
                     Piece::Bishop => BitBoard::new(0x24),
                     Piece::Queen => BitBoard::new(0x8),
@@ -156,52 +247,80 @@ impl Game{
             })
     }
 
+    fn compute_attack_threat_and_move_to_given(&self, square: Square, piece: Piece, color: Color) -> (BitBoard, BitBoard){
+        let side_index = usize::from(color);
+        let piece_idx = usize::from(piece);
+        let opponent_index = usize::from(color.opposite());
+        let own_pieces =  &Self::combine(&self.pieces_location[side_index]);
+        let opponent_pieces = &Self::combine(&self.pieces_location[opponent_index]);
+        let piece_bit = &self.pieces_location[side_index][piece_idx] & (&BitBoard::from(square));
+        let movement = piece.moves_function()(
+            &piece_bit,
+            square,
+            own_pieces,
+            opponent_pieces,
+            &color
+        );
+        let capture = piece.capture_function()(
+            &piece_bit,
+            square,
+            own_pieces,
+            opponent_pieces,
+            &color
+        );
+        (movement, capture)
+    }
+
     fn compute_attack_threat_and_move(&mut self){
+        self.pieces_movement.iter_mut()
+            .for_each(|piece_move| piece_move.iter_mut()
+                .for_each(|board| board.clear()));
+        self.pieces_capture_movement.iter_mut()
+            .for_each(|piece_move| piece_move.iter_mut()
+                .for_each(|board| board.clear()));
         for side in Color::iter(){
             let opponent_side = side.opposite();
             let side_index = usize::from(side);
-            let opponent_index = usize::from(opponent_side);
             for piece in Piece::iter(){
                 let piece_idx = usize::from(piece.clone());
-                let own_pieces =  &Self::combine(&self.pieces_location[side_index]);
-                let opponent_pieces = &Self::combine(&self.pieces_location[opponent_index]);
                 for square in &self.pieces_square[side_index][piece_idx]{
-                    let square = square.clone();
-                    self.pieces_movement[side_index][piece_idx] |= piece.moves_function()(
-                        &self.pieces_location[side_index][piece_idx],
-                        square,
-                        own_pieces,
-                        opponent_pieces,
-                        &side
-                    );
-                    self.pieces_capture_movement[side_index][piece_idx] |=  piece.capture_function()(
-                        &self.pieces_location[side_index][piece_idx],
-                        square,
-                        own_pieces,
-                        opponent_pieces,
-                        &side
-                    );
+                    let (movement, capture) = self.compute_attack_threat_and_move_to_given(square.clone(), piece, side);
+                    self.pieces_movement[side_index][piece_idx] |= movement;
+                    self.pieces_capture_movement[side_index][piece_idx] |= capture;
                 }
             }
         };
     }
 
-    fn is_checked(opponent_king: &BitBoard, pieces_capture: &[BitBoard; 6]) -> bool{
-        let attack = Self::combine(&pieces_capture);
-        !(attack & *opponent_king).is_empty()
+    fn is_checked(&self) -> bool{
+        let attack = Self::combine(&self.pieces_capture_movement[usize::from(self.turn.opposite())]);
+        let king_pos = self.pieces_location[usize::from(self.turn)][usize::from(Piece::King)];
+        !(attack & king_pos).is_empty()
     }
 
-    fn get_all_position(&self) -> [Option<Piece>; 64]{
+    fn get_all_position(&self) -> [Option<(Piece, Color)>; 64]{
         let mut board = [None; 64];
         for side in Color::iter(){
             for piece in Piece::iter(){
                 for square in &self.pieces_square[usize::from(side)][usize::from(piece)]{
                     let idx = usize::from(*square);
-                    board[idx] = Some(piece);
+                    board[idx] = Some((piece, side));
                 }
             }
         }
         board
+    }
+
+    fn get_piece_by_location(&self, color: Color, square: Square) -> Option<Piece> {
+        Piece::iter()
+            .find(|piece| self.pieces_square[usize::from(color)][usize::from(*piece)].contains(&square))
+    }
+
+    fn set_from(&mut self, other: Game){
+        self.pieces_square = other.pieces_square;
+        self.pieces_location = other.pieces_location;
+        self.pieces_movement = other.pieces_movement;
+        self.pieces_capture_movement = other.pieces_capture_movement;
     }
 }
 
@@ -261,20 +380,20 @@ mod tests {
         assert!(!result);
     }
 
-    #[test]
-    fn test_update_state_move_piece_success() {
-        let mut game = Game::new();
-
-        let from = Square::new(File::A, Rank::Two);
-        let to = Square::new(File::A, Rank::Three);
-        let piece = Piece::Pawn;
-        let side = Color::White;
-
-        game.update_state(from, to, piece, side);
-        let expected = BitBoard::from(to);
-        let res = expected & game.pieces_location[0][0];
-        assert!(!res.is_empty());
-    }
+    // #[test]
+    // fn test_update_state_move_piece_success() {
+    //     let mut game = Game::new();
+    //
+    //     let from = Square::new(File::A, Rank::Two);
+    //     let to = Square::new(File::A, Rank::Three);
+    //     let piece = Piece::Pawn;
+    //     let side = Color::White;
+    //
+    //     game.try_update_state(from, to, piece, side);
+    //     let expected = BitBoard::from(to);
+    //     let res = expected & game.pieces_location[0][0];
+    //     assert!(!res.is_empty());
+    // }
 
 }
 

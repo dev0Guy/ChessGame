@@ -70,7 +70,7 @@ impl Color{
     pub fn opposite(&self) -> Color{
         match self {
             Color::White => Color::Black,
-            Color::Black => Color::Black
+            Color::Black => Color::White
         }
     }
 }

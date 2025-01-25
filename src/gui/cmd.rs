@@ -15,31 +15,35 @@ const MOVE_REGEX: &'static str = r"^move\s+([a-h][1-8])\s+([a-h][1-8])$";
 const SHOW_REGEX: &'static str = r"^show\s+([a-h][1-8])$";
 
 impl CommandPromptGUI{
-    pub fn render(&mut self, board: &[(Option<Piece>); 64], side: Color) {
+    pub fn render(&mut self, board: &[Option<(Piece, Color)>; 64], turn: Color) {
         writeln!(self.writer, "{}", FILE_NAMES_ROW).unwrap();
-        for (idx, piece) in board.iter().enumerate() {
-            let [rank_idx, file_idx] = [idx / 8, idx % 8];
-            let styled = Self::styled_symbol(piece, side);
-            if file_idx == 0 {
-                write!(self.writer, "{}|", 8 - rank_idx).unwrap();
-            }
-            write!(self.writer, " {}", styled).unwrap();
-            if file_idx == 7{
-                writeln!(self.writer, "|{}", 8- rank_idx).unwrap();
+        for rank in  (0..8).rev(){
+            for file in 0..8{
+                let idx = rank * 8 + file;
+                let piece = &board[idx];
+                let styled = Self::styled_symbol(piece);
+                if file == 0 {
+                    write!(self.writer, "{}|", rank+1).unwrap();
+                }
+                write!(self.writer, " {}", styled).unwrap();
+                if file == 7{
+                    writeln!(self.writer, "|{}", rank+1).unwrap();
+                }
+
             }
         }
         writeln!(self.writer, "{}", FILE_NAMES_ROW).unwrap();
-        write!(self.writer, "{:?} Turn:", side).unwrap();
+        write!(self.writer, "{:?} Turn:", turn).unwrap();
         self.writer.flush().unwrap();
     }
 
     pub fn wait_and_process_event(&mut self) -> Option<(Square, Square)> {
         let move_regex = Regex::new(MOVE_REGEX).unwrap();
-        let show_regex = Regex::new(SHOW_REGEX).unwrap();
+        // let show_regex = Regex::new(SHOW_REGEX).unwrap();
         loop {
             let binding = self.receive_input();
             let user_action = binding.as_str();
-            match user_action {
+            let x = match user_action {
                 "help" | "h" => {
                     self.show_help_information();
                     continue;
@@ -54,7 +58,7 @@ impl CommandPromptGUI{
                     self.show_help_information();
                     continue;
                 }
-            }
+            };
         }
 
     }
@@ -87,20 +91,20 @@ impl CommandPromptGUI {
         (from, to)
     }
 
-    fn styled_symbol(piece: &Option<Piece>, color: Color) -> StyledContent<&'static str> {
-        match (piece, color) {
-            (Some(Piece::King), Color::White) => style::style("♔").with(style::Color::White),
-            (Some(Piece::King), Color::Black) => style::style("♚").with(style::Color::DarkGrey),
-            (Some(Piece::Queen), Color::White) => style::style("♕").with(style::Color::White),
-            (Some(Piece::Queen), Color::Black) => style::style("♛").with(style::Color::DarkGrey),
-            (Some(Piece::Rock), Color::White) => style::style("♖").with(style::Color::White),
-            (Some(Piece::Rock), Color::Black) => style::style("♜").with(style::Color::DarkGrey),
-            (Some(Piece::Bishop), Color::White) => style::style("♗").with(style::Color::White),
-            (Some(Piece::Bishop), Color::Black) => style::style("♝").with(style::Color::DarkGrey),
-            (Some(Piece::Knight), Color::White) => style::style("♘").with(style::Color::White),
-            (Some(Piece::Knight), Color::Black) => style::style("♞").with(style::Color::DarkGrey),
-            (Some(Piece::Pawn), Color::White) => style::style("♙").with(style::Color::White),
-            (Some(Piece::Pawn), Color::Black) => style::style("♟").with(style::Color::DarkGrey),
+    fn styled_symbol(piece: &Option<(Piece, Color)>) -> StyledContent<&'static str> {
+        match piece {
+            Some((Piece::King, Color::White)) => style::style("♔").with(style::Color::White),
+            Some((Piece::King, Color::Black)) => style::style("♚").with(style::Color::DarkGrey),
+            Some((Piece::Queen, Color::White)) => style::style("♕").with(style::Color::White),
+            Some((Piece::Queen, Color::Black)) => style::style("♛").with(style::Color::DarkGrey),
+            Some((Piece::Rock, Color::White)) => style::style("♖").with(style::Color::White),
+            Some((Piece::Rock, Color::Black)) => style::style("♜").with(style::Color::DarkGrey),
+            Some((Piece::Bishop, Color::White)) => style::style("♗").with(style::Color::White),
+            Some((Piece::Bishop, Color::Black)) => style::style("♝").with(style::Color::DarkGrey),
+            Some((Piece::Knight, Color::White)) => style::style("♘").with(style::Color::White),
+            Some((Piece::Knight, Color::Black)) => style::style("♞").with(style::Color::DarkGrey),
+            Some((Piece::Pawn, Color::White)) => style::style("♙").with(style::Color::White),
+            Some((Piece::Pawn, Color::Black)) => style::style("♟").with(style::Color::DarkGrey),
             _ => style("□").with(style::Color::Grey),
         }
     }

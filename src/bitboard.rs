@@ -1,4 +1,5 @@
 use std::{fmt, ops};
+use std::ops::BitAndAssign;
 
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) struct BitBoard(u64);
@@ -31,6 +32,10 @@ impl BitBoard{
 
     pub fn is_empty(&self) -> bool{
         self.0 == 0
+    }
+
+    pub fn clear(&mut self) {
+        self.0 = 0;
     }
 }
 
@@ -186,6 +191,12 @@ impl<'a> ops::BitOrAssign<&'a BitBoard> for BitBoard {
 impl ops::BitXorAssign for BitBoard{
     fn bitxor_assign(&mut self, rhs: Self) {
         self.0 ^= rhs.0;
+    }
+}
+
+impl BitAndAssign for BitBoard {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
     }
 }
 

@@ -44,6 +44,7 @@ impl TryFrom<char> for File {
             'e'|'E' => Ok(File::E),
             'f'|'F' => Ok(File::F),
             'g'|'G' => Ok(File::G),
+            'h'|'H' => Ok(File::H),
             _ => Err(())
         }
     }
