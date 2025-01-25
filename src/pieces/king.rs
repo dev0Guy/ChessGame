@@ -1,6 +1,6 @@
 use crate::bitboard::BitBoard;
 use crate::pieces::common::{Color, PossibleMoves};
-use crate::square::{File, Square};
+use crate::square::{Square};
 
 pub(crate) struct King;
 

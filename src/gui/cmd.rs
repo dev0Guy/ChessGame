@@ -43,7 +43,7 @@ impl CommandPromptGUI{
         loop {
             let binding = self.receive_input();
             let user_action = binding.as_str();
-            let x = match user_action {
+            match user_action {
                 "help" | "h" => {
                     self.show_help_information();
                     continue;

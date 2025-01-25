@@ -84,12 +84,12 @@ impl Pawn {
         // (8+1) for left capture (row and rank left)
         // (8-1) for right capture (row and rank left)
         let right_capture = match color {
-            Color::White => ((*piece & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::H)) << (8 + 1)),
-            Color::Black => ((*piece & !BitBoard::from(Rank::One) & !BitBoard::from(File::H)) >> (8 + 1)),
+            Color::White => (*piece & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::H)) << (8 + 1),
+            Color::Black => (*piece & !BitBoard::from(Rank::One) & !BitBoard::from(File::H)) >> (8 + 1),
         };
         let left_capture = match color {
-            Color::White => ((*piece & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::A)) << (8 - 1)),
-            Color::Black => ((*piece & !BitBoard::from(Rank::One) & !BitBoard::from(File::A)) >> (8 - 1)),
+            Color::White => (*piece & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::A)) << (8 - 1),
+            Color::Black => (*piece & !BitBoard::from(Rank::One) & !BitBoard::from(File::A)) >> (8 - 1),
         };
         ((left_capture | right_capture) & *opponent_pieces) & !own_pieces
     }

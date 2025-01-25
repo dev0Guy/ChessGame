@@ -1,5 +1,5 @@
 use crate::{BitBoard};
-use crate::square::{Square, File, Rank};
+use crate::square::{Square};
 use super::common::{Color, PossibleMoves};
 
 /// Description
