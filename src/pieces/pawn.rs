@@ -83,15 +83,15 @@ impl Pawn {
     fn possible_capture_step(piece: &BitBoard, own_pieces: &BitBoard, opponent_pieces: &BitBoard, color: &Color) -> BitBoard {
         // (8+1) for left capture (row and rank left)
         // (8-1) for right capture (row and rank left)
-        let left_capture = match color {
-            Color::White => (piece << (8 + 1)) & *opponent_pieces & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::H),
-            Color::Black => (piece >> (8 + 1)) & *opponent_pieces & !BitBoard::from(Rank::One) & !BitBoard::from(File::H),
-        };
         let right_capture = match color {
-            Color::White => (piece << (8 - 1)) & *opponent_pieces & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::A),
-            Color::Black => (piece >> (8 - 1)) & *opponent_pieces & !BitBoard::from(Rank::One) & !BitBoard::from(File::A),
+            Color::White => ((*piece & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::H)) << (8 + 1)),
+            Color::Black => ((*piece & !BitBoard::from(Rank::One) & !BitBoard::from(File::H)) >> (8 + 1)),
         };
-        (left_capture | right_capture) & !own_pieces
+        let left_capture = match color {
+            Color::White => ((*piece & !BitBoard::from(Rank::Eight) & !BitBoard::from(File::A)) << (8 - 1)),
+            Color::Black => ((*piece & !BitBoard::from(Rank::One) & !BitBoard::from(File::A)) >> (8 - 1)),
+        };
+        ((left_capture | right_capture) & *opponent_pieces) & !own_pieces
     }
 
 }
@@ -114,6 +114,19 @@ mod tests {
         let result = Pawn::possible_single_step(&piece, &own_pieces, &opponent_pieces, &Color::White);
 
         let expected = BitBoard::from(Square::new(File::D, Rank::Three));
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_for_guy(){
+        let piece = BitBoard::new(0x400000000000);
+        let own_pieces = BitBoard::new(0x408000000000);
+        let opponent_pieces = BitBoard::new(0xff9f000000000000);
+        println!("own {:?}", own_pieces);
+        println!("opponent pieces {:?}", opponent_pieces);
+        println!("Location {:?}", piece);
+        let result = Pawn::possible_capture_step(&piece, &own_pieces, &opponent_pieces, &Color::White);
+        let expected = BitBoard::from(Square::new(File::H, Rank::Seven));
         assert_eq!(result, expected);
     }
 
