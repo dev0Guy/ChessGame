@@ -14,7 +14,7 @@ use crate::pieces::common::{Color, PossibleMoves};
 use crate::square::Square;
 
 // TODO: create enum for pieces
-#[derive(EnumIter, Clone, Debug, Copy)]
+#[derive(EnumIter, Clone, Debug, Copy, PartialEq)]
 pub(crate) enum Piece{
     Pawn,
     Knight,

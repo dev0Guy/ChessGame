@@ -16,7 +16,7 @@ impl PossibleMoves for King{
 
 #[cfg(test)]
 mod tests {
-    use crate::square::Rank;
+    use crate::square::{File, Rank};
     use super::*;
 
     #[test]

@@ -61,6 +61,7 @@ impl Rock{
 
 #[cfg(test)]
 mod tests {
+    use crate::square::{File, Rank};
     use super::*;
 
     #[test]
