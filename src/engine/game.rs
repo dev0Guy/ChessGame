@@ -72,7 +72,13 @@ impl Game {
         let mut board_position = self.get_all_position();
         loop{
             self.gui.render(&board_position, self.turn);
-            // add function that check if checkmate and if so close the game
+            match self.is_game_over() {
+                Some(val) => {
+                    println!("Game Over!, {:?}", val);
+                    break;
+                }
+                None => {}
+            };
             let action = self.gui.wait_and_process_event();
             let action_res = match action {
                 None => continue,
@@ -80,7 +86,6 @@ impl Game {
                     match self.validate_move(from, to) {
                         Err(val) => Err(val),
                         Ok(piece) => {
-                            // validate there is no check on given king, if so return action is not allowed
                             let status = self.try_update_state(from, to, piece, self.turn);
                             match status {
                                 Err(val) => Err(val),
@@ -99,9 +104,7 @@ impl Game {
                 Err(str) => println!("{}", str),
                 Ok(_) => {}
             }
-
         }
-
     }
 
 
@@ -322,6 +325,61 @@ impl Game{
         self.pieces_movement = other.pieces_movement;
         self.pieces_capture_movement = other.pieces_capture_movement;
     }
+
+    pub fn is_game_over(&self) -> Option<GameResult> {
+        let side_idx = usize::from(self.turn);
+        let opponent_idx = usize::from(self.turn.opposite());
+        let has_no_moves = !self.has_legal_moves();
+        if has_no_moves{ return Some(GameResult::Draw) }
+        let king_position = self.pieces_location[side_idx][usize::from(Piece::King)];
+        let king_movement = self.pieces_movement[side_idx][usize::from(Piece::King)];
+        let possible_moves = !king_position & !king_movement & Self::combine(&self.pieces_movement[side_idx]) | Self::combine(&self.pieces_capture_movement[side_idx]);
+        let capture_moves = Self::combine(&self.pieces_movement[opponent_idx]) | Self::combine(&self.pieces_capture_movement[opponent_idx]);
+        let orig_attacking = self.get_attacking_pieces();
+        let is_king_has_way_to_escape = !(king_movement & !(capture_moves)).is_empty();
+        let attacking = orig_attacking.iter()
+            .filter(|(_, board)| board == &(board & (&!possible_moves)))
+            .map(|(_, board)| board)
+            .collect::<Vec<&BitBoard>>();
+        let is_not_check_mate = orig_attacking.is_empty() || attacking.is_empty() || is_king_has_way_to_escape;
+        match is_not_check_mate {
+            true => None,
+            false => Some(GameResult::Checkmate(self.turn.opposite()))
+        }
+    }
+
+    fn has_legal_moves(&self) -> bool {
+        let side_idx = usize::from(self.turn);
+        self.pieces_movement[side_idx]
+            .iter()
+            .chain(self.pieces_capture_movement[side_idx].iter())
+            .any(|bitboard| !bitboard.is_empty())
+    }
+
+    fn get_attacking_pieces(&self) -> Vec<(Piece, BitBoard)>{
+        let side_idx = usize::from(self.turn);
+        let opponent_side = self.turn.opposite();
+        let opponent_side_idx = usize::from(opponent_side);
+        let king_position = self.pieces_location[side_idx][usize::from(Piece::King)];
+        let mut attacking: Vec<(Piece, BitBoard)> = Vec::new();
+        for piece in Piece::iter(){
+            let attacking_board = self.pieces_capture_movement[opponent_side_idx][usize::from(piece)] & king_position;
+            if !attacking_board.is_empty(){
+                attacking.push((piece, attacking_board));
+            }
+        }
+        attacking
+
+    }
+
+}
+
+
+
+#[derive(Debug)]
+pub enum GameResult {
+    Checkmate(Color),
+    Draw,
 }
 
 #[cfg(test)]
